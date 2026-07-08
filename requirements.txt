@@ -1,0 +1,32 @@
+# PromptShield — Requirements
+# Install with: pip install -r requirements.txt
+# Python >= 3.11 required
+
+# ── Anthropic (Claude) ─────────────────────────────────────
+anthropic>=0.116.0
+
+# ── Google Gemini ──────────────────────────────────────────
+google-genai>=1.0.0
+
+# ── OpenAI (also used for Mistral, Ollama, Z.ai via compat)
+openai>=1.0.0
+
+# ── Groq (free tier, ultra-fast inference) ─────────────────
+groq>=0.9.0
+
+# ── Cohere ─────────────────────────────────────────────────
+cohere>=5.0.0
+
+# ── YAML payload loading ───────────────────────────────────
+PyYAML>=6.0.3
+
+# ── Optional: auto-load .env file ─────────────────────────
+python-dotenv>=1.0.0
+
+# ── stdlib (no install needed) ─────────────────────────────
+# argparse, csv, dataclasses, datetime, json,
+# os, pathlib, re, sqlite3, time
+
+# ── Note: Z.ai (GLM models) uses the openai package ────────
+# No extra install needed — just set ZAI_API_KEY
+# Get key at: https://bigmodel.cn (China) or https://z.ai (Global)

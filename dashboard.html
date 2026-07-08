@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PromptShield — Attack Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root{
+  --bg:#0a0c10;--surface:#111318;--surface2:#181c24;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
+  --text:#e8eaf0;--muted:#7a7f8e;--accent:#4f8ef7;
+  --danger:#e24b4a;--warning:#eda100;--success:#1baf7a;
+  --font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace;
+  --radius:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.6;min-height:100vh}
+.shell{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:1.5rem 1rem;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:1.5rem;overflow-y:auto}
+.main{padding:2rem;overflow-x:hidden}
+.logo{display:flex;align-items:center;gap:10px;font-weight:600;font-size:15px;letter-spacing:-.01em}
+.logo-icon{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#4f8ef7,#7c4dff);display:flex;align-items:center;justify-content:center;font-size:16px}
+.nav-label{font-size:10px;font-weight:600;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:.4rem}
+.nav-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:7px;cursor:pointer;color:var(--muted);font-size:13px;transition:all .15s;border:none;background:none;width:100%;text-align:left}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:rgba(79,142,247,.15);color:var(--accent)}
+.nav-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.sb-stat{background:var(--surface2);border-radius:var(--radius);padding:.7rem 1rem}
+.sb-stat .val{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
+.sb-stat .lbl{font-size:11px;color:var(--muted);margin-top:1px}
+.page-header{margin-bottom:1.5rem}
+.page-title{font-size:22px;font-weight:600;letter-spacing:-.02em;margin-bottom:.2rem}
+.page-sub{color:var(--muted);font-size:13px}
+.model-tabs{display:flex;gap:6px;margin-bottom:1.5rem;flex-wrap:wrap;align-items:center}
+.model-tab{padding:6px 14px;border-radius:20px;border:1px solid var(--border2);background:none;color:var(--muted);cursor:pointer;font-size:13px;font-family:var(--font);transition:all .15s}
+.model-tab:hover{border-color:var(--accent);color:var(--text)}
+.model-tab.active{background:rgba(79,142,247,.15);border-color:var(--accent);color:var(--accent)}
+.kpi-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:1.5rem}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem}
+.kpi-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.kpi-value{font-size:26px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.kpi-sub{font-size:11px;color:var(--muted);margin-top:3px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:1.5rem}
+.grid-score{display:grid;grid-template-columns:170px 1fr;gap:14px;margin-bottom:1.5rem}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem}
+.card-title{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:1rem}
+.score-ring-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;display:flex;flex-direction:column;align-items:center;gap:.5rem}
+.score-ring{position:relative;width:110px;height:110px}
+.score-ring svg{width:110px;height:110px;transform:rotate(-90deg)}
+.score-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.score-num{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
+.score-label{font-size:10px;color:var(--muted)}
+.tier-list{display:flex;flex-direction:column;gap:12px}
+.tier-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+.tier-name{font-size:13px;font-weight:500}
+.tier-meta{font-size:11px;color:var(--muted)}
+.tier-track{height:6px;background:var(--border2);border-radius:3px;overflow:hidden}
+.tier-fill{height:100%;border-radius:3px}
+.cat-list{display:flex;flex-direction:column;gap:7px}
+.cat-row{display:flex;align-items:center;gap:8px}
+.cat-label{width:155px;font-size:12px;color:var(--muted);text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cat-track{flex:1;height:14px;background:var(--border2);border-radius:3px;overflow:hidden}
+.cat-fill{height:100%;border-radius:3px;display:flex;align-items:center;padding-left:5px;font-size:10px;font-weight:600;color:rgba(255,255,255,.9)}
+.cat-pct{width:36px;font-size:11px;color:var(--muted);text-align:right;flex-shrink:0}
+.payload-table{width:100%;border-collapse:collapse;font-size:12px}
+.payload-table th{color:var(--muted);font-weight:500;text-align:left;padding:6px 10px;border-bottom:1px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+.payload-table td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+.payload-table tr:last-child td{border-bottom:none}
+.payload-table tr:hover td{background:var(--surface2)}
+.pid{font-family:var(--mono);font-size:11px;color:var(--accent)}
+.sev-badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600}
+.sev-critical{background:rgba(226,75,74,.2);color:#f09595}
+.sev-high{background:rgba(236,131,90,.2);color:#ec835a}
+.sev-medium{background:rgba(237,161,0,.2);color:#eda100}
+.sev-low{background:rgba(27,175,122,.2);color:#1baf7a}
+.status-dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:4px}
+.s-bypass{background:var(--danger)}
+.s-block{background:var(--success)}
+.page{display:none}
+.page.active{display:block}
+
+/* loader / empty states */
+.loader-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4rem 2rem;gap:1rem;color:var(--muted);text-align:center}
+.loader-wrap h2{font-size:16px;font-weight:500;color:var(--text)}
+.loader-wrap p{font-size:13px;max-width:360px;line-height:1.6}
+.btn-primary{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;cursor:pointer;font-family:var(--font);font-weight:500;transition:opacity .15s}
+.btn-primary:hover{opacity:.85}
+.btn-ghost{background:none;color:var(--muted);border:1px solid var(--border2);border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer;font-family:var(--font);transition:all .15s}
+.btn-ghost:hover{color:var(--text);border-color:var(--accent)}
+
+/* status bar */
+.status-bar{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);padding:.5rem 0;margin-bottom:1rem;border-bottom:1px solid var(--border)}
+.status-dot-sm{width:6px;height:6px;border-radius:50%;background:var(--success)}
+.status-dot-sm.loading{background:var(--warning);animation:pulse 1s infinite}
+.status-dot-sm.error{background:var(--danger)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* comparison */
+.cmp-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px}
+.cmp-label{width:130px;color:var(--muted);text-align:right;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cmp-bars{flex:1;display:flex;flex-direction:column;gap:3px}
+.cmp-bar{height:10px;border-radius:3px;display:flex;align-items:center;padding-left:5px;font-size:9px;font-weight:600;color:rgba(255,255,255,.9);white-space:nowrap;min-width:2px}
+.finding-row{display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;line-height:1.5}
+.finding-row:last-child{border-bottom:none}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="logo"><div class="logo-icon">🛡</div>PromptShield</div>
+
+  <nav>
+    <div class="nav-label">Views</div>
+    <button class="nav-item active" onclick="showPage('overview',this)"><div class="nav-dot" style="background:#4f8ef7"></div>Overview</button>
+    <button class="nav-item" onclick="showPage('tiers',this)"><div class="nav-dot" style="background:#ec835a"></div>Tier Analysis</button>
+    <button class="nav-item" onclick="showPage('compare',this)"><div class="nav-dot" style="background:#1baf7a"></div>Model Compare</button>
+    <button class="nav-item" onclick="showPage('payloads',this)"><div class="nav-dot" style="background:#eda100"></div>Payload Log</button>
+    <button class="nav-item" onclick="showPage('findings',this)"><div class="nav-dot" style="background:#7c4dff"></div>Findings</button>
+  </nav>
+
+  <div style="display:flex;flex-direction:column;gap:8px;margin-top:auto">
+    <div class="nav-label">Active Model</div>
+    <div class="sb-stat"><div class="val" id="sb-model" style="font-size:13px">—</div><div class="lbl" id="sb-info">No data loaded</div></div>
+    <div class="sb-stat"><div class="val" id="sb-score" style="color:var(--muted)">—</div><div class="lbl">Security score / 100</div></div>
+    <div class="sb-stat"><div class="val" id="sb-bypass" style="color:var(--muted)">—</div><div class="lbl">Bypass rate</div></div>
+    <button class="btn-ghost" style="width:100%;font-size:12px" onclick="openFolder()">📂 Load results folder</button>
+    <button class="btn-ghost" style="width:100%;font-size:12px" onclick="refreshAll()">🔄 Refresh now</button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <div class="status-dot-sm" id="status-dot"></div>
+  <span id="status-text">No folder loaded — click "Load results folder" to begin</span>
+  <span style="margin-left:auto" id="last-updated"></span>
+</div>
+
+<!-- MODEL TABS (dynamic) -->
+<div class="model-tabs" id="model-tabs">
+  <span style="font-size:12px;color:var(--muted)">Load your results folder to see models</span>
+</div>
+
+<!-- OVERVIEW -->
+<div id="page-overview" class="page active">
+  <div class="page-header">
+    <div class="page-title">Attack Overview</div>
+    <div class="page-sub" id="ov-sub">Load results to populate</div>
+  </div>
+  <div id="overview-content">
+    <div class="loader-wrap">
+      <div style="font-size:48px">🛡️</div>
+      <h2>No data loaded</h2>
+      <p>Click "Load results folder" in the sidebar and select your PromptShield <code style="color:var(--accent)">results/</code> folder. The dashboard reads all CSV files automatically.</p>
+      <button class="btn-primary" onclick="openFolder()">📂 Load results folder</button>
+    </div>
+  </div>
+</div>
+
+<!-- TIER ANALYSIS -->
+<div id="page-tiers" class="page">
+  <div class="page-header"><div class="page-title">Tier Analysis</div><div class="page-sub">Vulnerability by attack technique</div></div>
+  <div id="tiers-content"><div class="loader-wrap"><p style="color:var(--muted)">Load results folder first</p></div></div>
+</div>
+
+<!-- COMPARE -->
+<div id="page-compare" class="page">
+  <div class="page-header"><div class="page-title">Model Comparison</div><div class="page-sub" id="cmp-sub">All loaded models</div></div>
+  <div id="compare-content"><div class="loader-wrap"><p style="color:var(--muted)">Load results folder first</p></div></div>
+</div>
+
+<!-- PAYLOAD LOG -->
+<div id="page-payloads" class="page">
+  <div class="page-header"><div class="page-title">Payload Log</div><div class="page-sub">All attack results for active model</div></div>
+  <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">
+    <select id="filter-tier" onchange="renderPayloads()" style="background:var(--surface);border:1px solid var(--border2);color:var(--text);padding:6px 10px;border-radius:6px;font-size:12px">
+      <option value="">All tiers</option>
+      <option value="1">Tier 1 — Direct</option>
+      <option value="2">Tier 2 — Persona</option>
+      <option value="3">Tier 3 — Indirect</option>
+      <option value="4">Tier 4 — Encoding</option>
+    </select>
+    <select id="filter-status" onchange="renderPayloads()" style="background:var(--surface);border:1px solid var(--border2);color:var(--text);padding:6px 10px;border-radius:6px;font-size:12px">
+      <option value="">All results</option><option value="1">Bypassed</option><option value="0">Blocked</option>
+    </select>
+    <select id="filter-sev" onchange="renderPayloads()" style="background:var(--surface);border:1px solid var(--border2);color:var(--text);padding:6px 10px;border-radius:6px;font-size:12px">
+      <option value="">All severity</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option>
+    </select>
+    <span id="filter-count" style="font-size:12px;color:var(--muted);align-self:center;margin-left:4px"></span>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table class="payload-table">
+      <thead><tr><th>ID</th><th>Run</th><th>Tier</th><th>Category</th><th>Goal</th><th>Severity</th><th>Status</th><th>Signal</th></tr></thead>
+      <tbody id="payload-tbody"><tr><td colspan="8" style="text-align:center;color:var(--muted);padding:2rem">Load results folder first</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- FINDINGS -->
+<div id="page-findings" class="page">
+  <div class="page-header"><div class="page-title">Research Findings</div><div class="page-sub">Auto-generated from loaded results</div></div>
+  <div id="findings-content"><div class="loader-wrap"><p style="color:var(--muted)">Load results folder first</p></div></div>
+</div>
+
+</main>
+</div>
+
+<script>
+// ─── state ────────────────────────────────────────────────────
+let folderHandle = null;
+let DATA = {};           // modelKey → modelData
+let activeModel = null;
+let refreshTimer = null;
+let charts = {};
+
+const TIER_LABELS = {1:'Direct injection',2:'Persona hijacking',3:'Indirect injection',4:'Encoding/obfuscation'};
+
+// ─── CSV parser ───────────────────────────────────────────────
+function parseCSV(text) {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g,''));
+  return lines.slice(1).map(line => {
+    // handle quoted fields with commas
+    const cols = [];
+    let cur = '', inQ = false;
+    for (let c of line) {
+      if (c === '"') { inQ = !inQ; continue; }
+      if (c === ',' && !inQ) { cols.push(cur); cur = ''; continue; }
+      cur += c;
+    }
+    cols.push(cur);
+    const row = {};
+    headers.forEach((h, i) => row[h] = (cols[i] || '').trim());
+    return row;
+  });
+}
+
+// ─── extract model name from run_id ──────────────────────────
+function modelFromRunId(runId) {
+  // run_id format: YYYYMMDD_HHMMSS_modelkey
+  // e.g. 20260705_183704_groq-llama
+  const parts = runId.split('_');
+  if (parts.length >= 3) return parts.slice(2).join('_');
+  return runId;
+}
+
+function friendlyName(key) {
+  const names = {
+    'groq-llama'  : 'Llama 3.3 70B',
+    'nemotron'    : 'Nemotron Ultra 550B',
+    'or-free-nvidia':'Nemotron Ultra 550B',
+    'claude'      : 'Claude Sonnet',
+    'claude-opus' : 'Claude Opus',
+    'claude-haiku': 'Claude Haiku',
+    'gemini'      : 'Gemini 2.0 Flash',
+    'gemini-pro'  : 'Gemini 2.5 Pro',
+    'gpt4o'       : 'GPT-4o',
+    'gpt4o-mini'  : 'GPT-4o mini',
+    'deepseek'    : 'DeepSeek V4 Pro',
+    'deepseek-r1' : 'DeepSeek R1',
+    'qwen3'       : 'Qwen3 Max',
+    'glm5'        : 'GLM 5.2',
+    'o3'          : 'OpenAI o3',
+    'o4-mini'     : 'OpenAI o4-mini',
+    'groq-mixtral': 'Mixtral 8x7B',
+    'groq-gemma'  : 'Gemma 2 9B',
+    'mistral'     : 'Mistral Large',
+    'cohere'      : 'Cohere Command R+',
+  };
+  for (const [k,v] of Object.entries(names)) {
+    if (key.includes(k)) return v;
+  }
+  return key.replace(/-/g,' ').replace(/\b\w/g, c=>c.toUpperCase());
+}
+
+// ─── build model stats from flat row array ────────────────────
+function buildStats(rows, modelKey) {
+  const total    = rows.length;
+  const bypassed = rows.filter(r => r.success === '1').length;
+  const blocked  = total - bypassed;
+  const rate     = total ? +(bypassed/total*100).toFixed(1) : 0;
+  const score    = +(100-rate).toFixed(1);
+
+  // tiers — infer from payload_id prefix (T1-, T2-, T3-, T4-)
+  const tierOf = r => {
+    const m = (r.payload_id||'').match(/^T(\d)-/);
+    return m ? parseInt(m[1]) : (parseInt(r.tier)||0);
+  };
+
+  const tiers = {};
+  for (let t=1; t<=4; t++) {
+    const tr = rows.filter(r => tierOf(r) === t);
+    const tb = tr.filter(r => r.success === '1').length;
+    const lats = tr.map(r => parseInt(r.latency_ms)||0).filter(v=>v>0);
+    tiers[t] = {
+      total: tr.length, bypassed: tb,
+      rate: tr.length ? +(tb/tr.length*100).toFixed(1) : 0,
+      avg_lat: lats.length ? Math.round(lats.reduce((a,b)=>a+b,0)/lats.length) : 0,
+      label: TIER_LABELS[t]
+    };
+  }
+
+  // severities
+  const sevs = {};
+  for (const sev of ['critical','high','medium','low']) {
+    const sr = rows.filter(r => r.severity === sev);
+    const sb = sr.filter(r => r.success === '1').length;
+    sevs[sev] = { total:sr.length, bypassed:sb, rate:sr.length ? +(sb/sr.length*100).toFixed(1):0 };
+  }
+
+  // categories
+  const catMap = {};
+  rows.forEach(r => {
+    const c = r.category || 'unknown';
+    if (!catMap[c]) catMap[c] = { total:0, bypassed:0 };
+    catMap[c].total++;
+    if (r.success === '1') catMap[c].bypassed++;
+  });
+  const categories = {};
+  for (const [c,v] of Object.entries(catMap)) {
+    categories[c] = { ...v, rate: v.total ? +(v.bypassed/v.total*100).toFixed(1):0 };
+  }
+
+  // avg latency overall
+  const allLats = rows.map(r=>parseInt(r.latency_ms)||0).filter(v=>v>0);
+  const avgLat  = allLats.length ? Math.round(allLats.reduce((a,b)=>a+b,0)/allLats.length) : 0;
+
+  return {
+    key: modelKey,
+    name: friendlyName(modelKey),
+    total, bypassed, blocked, rate, score, avgLat,
+    tiers, severities: sevs, categories,
+    payloads: rows.map(r => ({
+      id:     r.payload_id,
+      run:    r.run_id || '',
+      tier:   tierOf(r),
+      cat:    r.category || '',
+      goal:   r.goal || '',
+      sev:    r.severity || '',
+      success: r.success === '1' ? 1 : 0,
+      signal: r.matched_signal || '',
+      lat:    parseInt(r.latency_ms)||0,
+      error:  r.error || ''
+    }))
+  };
+}
+
+// ─── read CSV files from folder handle ───────────────────────
+async function readFolder(handle) {
+  setStatus('loading', 'Reading CSV files…');
+  const filesByModel = {};
+
+  for await (const entry of handle.values()) {
+    if (entry.kind !== 'file') continue;
+    const name = entry.name;
+    if (!name.endsWith('.csv') || !name.startsWith('report_')) continue;
+
+    // filename: report_YYYYMMDD_HHMMSS_modelkey.csv
+    const base   = name.replace(/^report_/, '').replace(/\.csv$/, '');
+    const parts  = base.split('_');
+    // modelkey starts after YYYYMMDD_HHMMSS (2 parts)
+    const modelKey = parts.slice(2).join('_') || 'unknown';
+
+    const file = await entry.getFile();
+    const text = await file.text();
+    const rows = parseCSV(text);
+    if (!rows.length) continue;
+
+    if (!filesByModel[modelKey]) filesByModel[modelKey] = [];
+    filesByModel[modelKey].push(...rows);
+  }
+
+  if (!Object.keys(filesByModel).length) {
+    setStatus('error', 'No report_*.csv files found in this folder');
+    return false;
+  }
+
+  // rebuild DATA
+  DATA = {};
+  for (const [key, rows] of Object.entries(filesByModel)) {
+    DATA[key] = buildStats(rows, key);
+  }
+
+  // set activeModel to first if not already valid
+  const keys = Object.keys(DATA);
+  if (!DATA[activeModel]) activeModel = keys[0];
+
+  renderModelTabs();
+  renderAll();
+  setStatus('ok', `Loaded ${keys.length} model(s), ${Object.values(DATA).reduce((a,d)=>a+d.total,0)} total results`);
+  document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+  return true;
+}
+
+// ─── open folder picker ───────────────────────────────────────
+async function openFolder() {
+  if (!window.showDirectoryPicker) {
+    alert('Your browser does not support the File System Access API.\nPlease use Chrome or Edge 86+.');
+    return;
+  }
+  try {
+    folderHandle = await window.showDirectoryPicker({ mode: 'read' });
+    await readFolder(folderHandle);
+    // auto-refresh every 30s
+    clearInterval(refreshTimer);
+    refreshTimer = setInterval(refreshAll, 30000);
+  } catch (e) {
+    if (e.name !== 'AbortError') {
+      setStatus('error', 'Failed to read folder: ' + e.message);
+    }
+  }
+}
+
+async function refreshAll() {
+  if (!folderHandle) return;
+  setStatus('loading', 'Refreshing…');
+  await readFolder(folderHandle);
+}
+
+// ─── status bar helpers ───────────────────────────────────────
+function setStatus(state, msg) {
+  const dot  = document.getElementById('status-dot');
+  const text = document.getElementById('status-text');
+  dot.className = 'status-dot-sm' + (state==='loading'?' loading': state==='error'?' error':'');
+  text.textContent = msg;
+}
+
+// ─── model tabs ───────────────────────────────────────────────
+function renderModelTabs() {
+  const wrap = document.getElementById('model-tabs');
+  wrap.innerHTML = Object.values(DATA).map(d =>
+    `<button class="model-tab ${d.key===activeModel?'active':''}"
+       onclick="selectModel('${d.key}',this)">${d.name}</button>`
+  ).join('') +
+  `<button class="btn-ghost" style="margin-left:auto;font-size:12px;padding:5px 12px" onclick="openFolder()">📂 Change folder</button>
+   <button class="btn-ghost" style="font-size:12px;padding:5px 12px" onclick="refreshAll()">🔄 Refresh</button>`;
+}
+
+function selectModel(key, btn) {
+  activeModel = key;
+  document.querySelectorAll('.model-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAll();
+}
+
+// ─── page navigation ──────────────────────────────────────────
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (id==='payloads') renderPayloads();
+  if (id==='tiers')    renderTiers();
+  if (id==='compare')  renderCompare();
+  if (id==='findings') renderFindings();
+}
+
+// ─── helpers ──────────────────────────────────────────────────
+function colorForRate(r) {
+  if (r>=75) return '#e24b4a';
+  if (r>=50) return '#ec835a';
+  if (r>=25) return '#eda100';
+  return '#1baf7a';
+}
+function grade(s) {
+  if (s>=90) return 'A'; if (s>=75) return 'B';
+  if (s>=60) return 'C'; if (s>=40) return 'D'; return 'F';
+}
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+function fmt(n) { return Number.isInteger(n) ? n : n.toFixed(1); }
+
+// ─── OVERVIEW ─────────────────────────────────────────────────
+function renderOverview() {
+  const d = DATA[activeModel];
+  if (!d) return;
+
+  // sidebar
+  document.getElementById('sb-model').textContent = d.name;
+  document.getElementById('sb-info').textContent  = `${d.total} payloads · ${Object.keys(DATA).length} model(s)`;
+  document.getElementById('sb-score').textContent = fmt(d.score);
+  document.getElementById('sb-score').style.color = colorForRate(100-d.score);
+  document.getElementById('sb-bypass').textContent = fmt(d.rate)+'%';
+  document.getElementById('sb-bypass').style.color = colorForRate(d.rate);
+
+  document.getElementById('ov-sub').textContent = `${d.total} payloads · ${Object.values(d.tiers).filter(t=>t.total>0).length} tiers · ${d.name}`;
+
+  const crit = d.severities.critical || {total:0,bypassed:0,rate:0};
+  document.getElementById('overview-content').innerHTML = `
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-label">Bypass rate</div>
+      <div class="kpi-value" style="color:${colorForRate(d.rate)}">${fmt(d.rate)}%</div>
+      <div class="kpi-sub">${d.bypassed} / ${d.total} payloads</div></div>
+    <div class="kpi"><div class="kpi-label">Security score</div>
+      <div class="kpi-value" style="color:${colorForRate(100-d.score)}">${fmt(d.score)}</div>
+      <div class="kpi-sub">out of 100</div></div>
+    <div class="kpi"><div class="kpi-label">Critical bypassed</div>
+      <div class="kpi-value" style="color:${colorForRate(crit.rate)}">${crit.bypassed}/${crit.total}</div>
+      <div class="kpi-sub">${fmt(crit.rate)}% critical bypass rate</div></div>
+    <div class="kpi"><div class="kpi-label">Avg latency</div>
+      <div class="kpi-value">${d.avgLat.toLocaleString()}ms</div>
+      <div class="kpi-sub">per request</div></div>
+  </div>
+  <div class="grid-score">
+    <div class="score-ring-wrap">
+      <div class="score-ring">
+        <svg viewBox="0 0 110 110">
+          <circle cx="55" cy="55" r="48" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="8"/>
+          <circle cx="55" cy="55" r="48" fill="none" stroke="${colorForRate(100-d.score)}"
+            stroke-width="8" stroke-dasharray="301.6"
+            stroke-dashoffset="${(301.6*(1-d.score/100)).toFixed(1)}" stroke-linecap="round"/>
+        </svg>
+        <div class="score-center">
+          <div class="score-num" style="color:${colorForRate(100-d.score)}">${fmt(d.score)}</div>
+          <div class="score-label">SECURITY</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);text-align:center">
+        <div style="font-size:20px;font-weight:700;color:${colorForRate(100-d.score)}">${grade(d.score)}</div>Grade
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Severity breakdown</div>
+      <div class="cat-list">${renderSevBars(d)}</div>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Bypass rate by tier</div>
+      <div class="tier-list">${renderTierBars(d)}</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Bypass rate across tiers</div>
+      <div style="position:relative;height:200px"><canvas id="tierChart" role="img" aria-label="Line chart of bypass rate across attack tiers"></canvas></div>
+    </div>
+  </div>`;
+
+  destroyChart('tierChart');
+  const tierNums = [1,2,3,4].filter(t=>d.tiers[t]&&d.tiers[t].total>0);
+  const tierRates= tierNums.map(t=>d.tiers[t].rate);
+  charts['tierChart'] = new Chart(document.getElementById('tierChart'),{
+    type:'line',
+    data:{
+      labels: tierNums.map(t=>'T'+t+' '+TIER_LABELS[t].split(' ')[0]),
+      datasets:[{label:'Bypass %',data:tierRates,borderColor:'#4f8ef7',
+        backgroundColor:'rgba(79,142,247,.1)',borderWidth:2,
+        pointBackgroundColor:tierRates.map(r=>colorForRate(r)),
+        pointBorderColor:tierRates.map(r=>colorForRate(r)),
+        pointRadius:6,fill:true,tension:0.3}]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{y:{min:0,max:100,ticks:{color:'#7a7f8e',callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.05)'}},
+              x:{ticks:{color:'#7a7f8e'},grid:{display:false}}}}
+  });
+}
+
+function renderSevBars(d) {
+  return ['critical','high','medium','low'].map(s => {
+    const v = d.severities[s] || {total:0,bypassed:0,rate:0};
+    if (!v.total) return '';
+    const c = colorForRate(v.rate);
+    return `<div class="cat-row">
+      <div class="cat-label">${s.charAt(0).toUpperCase()+s.slice(1)}</div>
+      <div class="cat-track"><div class="cat-fill" style="width:${v.rate}%;background:${c}">${v.bypassed}/${v.total}</div></div>
+      <div class="cat-pct">${fmt(v.rate)}%</div>
+    </div>`;
+  }).join('');
+}
+
+function renderTierBars(d) {
+  return [1,2,3,4].filter(t=>d.tiers[t]&&d.tiers[t].total>0).map(t => {
+    const tier = d.tiers[t];
+    const c = colorForRate(tier.rate);
+    return `<div>
+      <div class="tier-header">
+        <div class="tier-name">Tier ${t} — ${tier.label}</div>
+        <div class="tier-meta">${tier.bypassed}/${tier.total} · ${tier.avg_lat.toLocaleString()}ms</div>
+      </div>
+      <div class="tier-track"><div class="tier-fill" style="width:${tier.rate}%;background:${c}"></div></div>
+    </div>`;
+  }).join('');
+}
+
+// ─── TIER ANALYSIS ────────────────────────────────────────────
+function renderTiers() {
+  const d = DATA[activeModel];
+  if (!d) return;
+  const sorted = Object.entries(d.categories).sort((a,b)=>b[1].rate-a[1].rate);
+
+  document.getElementById('tiers-content').innerHTML = `
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Category bypass rates</div>
+      <div class="cat-list">${sorted.map(([cat,v])=>{
+        const c=colorForRate(v.rate);
+        return `<div class="cat-row">
+          <div class="cat-label">${cat.replace(/_/g,' ')}</div>
+          <div class="cat-track"><div class="cat-fill" style="width:${v.rate}%;background:${c}">${v.bypassed}/${v.total}</div></div>
+          <div class="cat-pct">${fmt(v.rate)}%</div>
+        </div>`;}).join('')}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Category chart</div>
+      <div style="position:relative;height:${Math.max(280,sorted.length*22+60)}px">
+        <canvas id="catChart" role="img" aria-label="Horizontal bar chart of bypass rates per category"></canvas>
+      </div>
+    </div>
+  </div>`;
+
+  destroyChart('catChart');
+  charts['catChart'] = new Chart(document.getElementById('catChart'),{
+    type:'bar',
+    data:{
+      labels:sorted.map(([k])=>k.replace(/_/g,' ')),
+      datasets:[{label:'Bypass %',data:sorted.map(([,v])=>v.rate),
+        backgroundColor:sorted.map(([,v])=>colorForRate(v.rate)+'cc'),borderRadius:3,borderSkipped:false}]
+    },
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{x:{min:0,max:100,ticks:{color:'#7a7f8e',callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.05)'}},
+              y:{ticks:{color:'#7a7f8e',font:{size:11}},grid:{display:false}}}}
+  });
+}
+
+// ─── COMPARE ──────────────────────────────────────────────────
+function renderCompare() {
+  const models = Object.values(DATA);
+  if (models.length < 2) {
+    document.getElementById('compare-content').innerHTML =
+      '<div class="loader-wrap"><p>Load results from at least 2 models to compare</p></div>';
+    return;
+  }
+
+  const COLORS = ['#e24b4a','#4f8ef7','#1baf7a','#eda100','#7c4dff','#ec835a'];
+  const tiers = [1,2,3,4];
+
+  // KPI row: best and worst
+  const sorted = [...models].sort((a,b)=>a.rate-b.rate);
+  const best = sorted[0], worst = sorted[sorted.length-1];
+  const diff = +(worst.rate - best.rate).toFixed(1);
+
+  document.getElementById('cmp-sub').textContent = `${models.length} models · ${models.reduce((a,m)=>a+m.total,0)} total results`;
+  document.getElementById('compare-content').innerHTML = `
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-label">Most resistant</div>
+      <div class="kpi-value" style="color:#1baf7a;font-size:16px">${best.name}</div>
+      <div class="kpi-sub">${fmt(best.rate)}% bypass rate</div></div>
+    <div class="kpi"><div class="kpi-label">Most vulnerable</div>
+      <div class="kpi-value" style="color:#e24b4a;font-size:16px">${worst.name}</div>
+      <div class="kpi-sub">${fmt(worst.rate)}% bypass rate</div></div>
+    <div class="kpi"><div class="kpi-label">Rate spread</div>
+      <div class="kpi-value" style="color:var(--warning)">${fmt(diff)}pp</div>
+      <div class="kpi-sub">best vs worst</div></div>
+    <div class="kpi"><div class="kpi-label">Models tested</div>
+      <div class="kpi-value" style="color:var(--text)">${models.length}</div>
+      <div class="kpi-sub">${models.reduce((a,m)=>a+m.total,0)} total payloads</div></div>
+  </div>
+  <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+    ${models.map((m,i)=>`<span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)">
+      <span style="width:10px;height:10px;border-radius:2px;background:${COLORS[i%COLORS.length]};display:inline-block"></span>${m.name}</span>`).join('')}
+  </div>
+  <div class="card" style="margin-bottom:1.5rem">
+    <div class="card-title">Bypass rate by tier</div>
+    <div style="position:relative;height:260px"><canvas id="cmpChart" role="img" aria-label="Grouped bar chart comparing bypass rates per tier across models"></canvas></div>
+  </div>
+  <div class="card" style="margin-bottom:1.5rem">
+    <div class="card-title">Overall bypass rate</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${[...models].sort((a,b)=>b.rate-a.rate).map(m=>{
+        const c=colorForRate(m.rate);
+        return `<div style="display:flex;align-items:center;gap:8px">
+          <div style="width:160px;font-size:12px;color:var(--muted);text-align:right;flex-shrink:0">${m.name}</div>
+          <div style="flex:1;height:18px;background:var(--border2);border-radius:4px;overflow:hidden">
+            <div style="width:${m.rate}%;height:100%;background:${c};border-radius:4px;display:flex;align-items:center;padding-left:6px;font-size:10px;font-weight:600;color:#fff">${fmt(m.rate)}%</div>
+          </div>
+          <div style="width:40px;font-size:11px;color:var(--muted);text-align:right">${m.score.toFixed(0)}/100</div>
+        </div>`;}).join('')}
+    </div>
+  </div>`;
+
+  destroyChart('cmpChart');
+  charts['cmpChart'] = new Chart(document.getElementById('cmpChart'),{
+    type:'bar',
+    data:{
+      labels: tiers.map(t=>'Tier '+t+' — '+TIER_LABELS[t]),
+      datasets: models.map((m,i)=>({
+        label: m.name,
+        data: tiers.map(t=>(m.tiers[t]||{rate:0}).rate),
+        backgroundColor: COLORS[i%COLORS.length]+'cc',
+        borderRadius:3, borderSkipped:false
+      }))
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{y:{min:0,max:100,ticks:{color:'#7a7f8e',callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.05)'}},
+              x:{ticks:{color:'#7a7f8e'},grid:{display:false}}}}
+  });
+}
+
+// ─── PAYLOAD LOG ──────────────────────────────────────────────
+function renderPayloads() {
+  const d = DATA[activeModel];
+  if (!d) return;
+  const tierF   = document.getElementById('filter-tier').value;
+  const statusF = document.getElementById('filter-status').value;
+  const sevF    = document.getElementById('filter-sev').value;
+
+  let rows = d.payloads;
+  if (tierF)   rows = rows.filter(r=>String(r.tier)===tierF);
+  if (statusF) rows = rows.filter(r=>String(r.success)===statusF);
+  if (sevF)    rows = rows.filter(r=>r.sev===sevF);
+
+  document.getElementById('filter-count').textContent = `${rows.length} results`;
+  document.getElementById('payload-tbody').innerHTML = rows.length ? rows.map(r=>`<tr>
+    <td><span class="pid">${r.id}</span></td>
+    <td style="font-size:11px;color:var(--muted);font-family:var(--mono)">${r.run.slice(-8)||'—'}</td>
+    <td style="color:var(--muted)">T${r.tier}</td>
+    <td>${r.cat.replace(/_/g,' ')}</td>
+    <td style="color:var(--muted);font-size:11px">${r.goal.replace(/_/g,' ')}</td>
+    <td><span class="sev-badge sev-${r.sev}">${r.sev}</span></td>
+    <td><span class="status-dot ${r.success?'s-bypass':'s-block'}"></span>${r.success?'<span style="color:#e24b4a">bypassed</span>':'<span style="color:#1baf7a">blocked</span>'}</td>
+    <td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${r.signal||'—'}</td>
+  </tr>`).join('') :
+  '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:2rem">No results match filters</td></tr>';
+}
+
+// ─── FINDINGS ─────────────────────────────────────────────────
+function renderFindings() {
+  const models = Object.values(DATA);
+  if (!models.length) return;
+
+  // auto-generate findings from data
+  const findings = [];
+  const sorted = [...models].sort((a,b)=>a.rate-b.rate);
+  const best = sorted[0], worst = sorted[sorted.length-1];
+
+  if (models.length >= 2) {
+    findings.push({
+      title: 'Model resistance gap',
+      text: `${best.name} has the lowest bypass rate at ${fmt(best.rate)}% while ${worst.name} reaches ${fmt(worst.rate)}% — a ${fmt(worst.rate-best.rate)}pp spread across ${models.length} models tested.`,
+      a: { label: best.name+' bypass', val: fmt(best.rate)+'%', col: colorForRate(best.rate) },
+      b: { label: worst.name+' bypass', val: fmt(worst.rate)+'%', col: colorForRate(worst.rate) }
+    });
+  }
+
+  // find most vulnerable category across all models
+  const catRates = {};
+  models.forEach(m => {
+    Object.entries(m.categories).forEach(([c,v]) => {
+      if (!catRates[c]) catRates[c] = [];
+      if (v.total > 0) catRates[c].push(v.rate);
+    });
+  });
+  const avgCat = Object.entries(catRates)
+    .filter(([,r])=>r.length>0)
+    .map(([c,r])=>([c, r.reduce((a,b)=>a+b,0)/r.length]))
+    .sort((a,b)=>b[1]-a[1]);
+
+  if (avgCat.length) {
+    const [topCat, topRate] = avgCat[0];
+    findings.push({
+      title: 'Most dangerous attack category',
+      text: `"${topCat.replace(/_/g,' ')}" achieves the highest average bypass rate (${fmt(topRate)}%) across all tested models — making it the priority target for defense implementation.`,
+      a: { label: 'Avg bypass rate', val: fmt(topRate)+'%', col: colorForRate(topRate) },
+      b: { label: 'Models vulnerable', val: catRates[topCat].length+'/'+models.length, col: '#4f8ef7' }
+    });
+  }
+
+  // tier with biggest variance between models (most interesting)
+  if (models.length >= 2) {
+    let biggestVar = 0, biggestTier = 1;
+    for (let t=1; t<=4; t++) {
+      const rates = models.map(m=>(m.tiers[t]||{rate:0}).rate);
+      const max = Math.max(...rates), min = Math.min(...rates);
+      if (max-min > biggestVar) { biggestVar=max-min; biggestTier=t; }
+    }
+    const tierRates = models.map(m=>({name:m.name, rate:(m.tiers[biggestTier]||{rate:0}).rate})).sort((a,b)=>a.rate-b.rate);
+    findings.push({
+      title: `Tier ${biggestTier} — highest model variance`,
+      text: `Tier ${biggestTier} (${TIER_LABELS[biggestTier]}) shows the most variation between models — ${fmt(biggestVar)}pp spread. ${tierRates[0].name} resists it best at ${fmt(tierRates[0].rate)}% while ${tierRates[tierRates.length-1].name} scores ${fmt(tierRates[tierRates.length-1].rate)}%.`,
+      a: { label: tierRates[0].name, val: fmt(tierRates[0].rate)+'%', col: colorForRate(tierRates[0].rate) },
+      b: { label: tierRates[tierRates.length-1].name, val: fmt(tierRates[tierRates.length-1].rate)+'%', col: colorForRate(tierRates[tierRates.length-1].rate) }
+    });
+  }
+
+  // critical severity summary
+  const totalCrit = models.reduce((a,m)=>a+(m.severities.critical||{total:0}).total,0);
+  const bypassCrit= models.reduce((a,m)=>a+(m.severities.critical||{bypassed:0}).bypassed,0);
+  if (totalCrit > 0) {
+    findings.push({
+      title: 'Critical severity attack success rate',
+      text: `Across all models, ${bypassCrit} of ${totalCrit} critical-severity payloads succeeded — a ${fmt(bypassCrit/totalCrit*100)}% critical bypass rate. These represent the most dangerous real-world attack vectors.`,
+      a: { label: 'Critical bypassed', val: bypassCrit+'/'+totalCrit, col: colorForRate(bypassCrit/totalCrit*100) },
+      b: { label: 'Critical success rate', val: fmt(bypassCrit/totalCrit*100)+'%', col: colorForRate(bypassCrit/totalCrit*100) }
+    });
+  }
+
+  document.getElementById('findings-content').innerHTML = `
+  <div class="grid-2">
+    ${findings.map(f=>`<div class="card">
+      <div class="card-title">${f.title}</div>
+      <div class="finding-row"><div>${f.text}</div></div>
+      <div style="display:flex;gap:10px;margin-top:10px">
+        <div style="flex:1;text-align:center;background:${f.a.col}22;border-radius:8px;padding:.75rem">
+          <div style="font-size:18px;font-weight:700;color:${f.a.col}">${f.a.val}</div>
+          <div style="font-size:11px;color:var(--muted)">${f.a.label}</div>
+        </div>
+        <div style="flex:1;text-align:center;background:${f.b.col}22;border-radius:8px;padding:.75rem">
+          <div style="font-size:18px;font-weight:700;color:${f.b.col}">${f.b.val}</div>
+          <div style="font-size:11px;color:var(--muted)">${f.b.label}</div>
+        </div>
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+
+// ─── render everything for active model ───────────────────────
+function renderAll() {
+  renderOverview();
+  // re-render current page if not overview
+  const activePage = document.querySelector('.page.active');
+  if (activePage) {
+    const id = activePage.id.replace('page-','');
+    if (id==='tiers')    renderTiers();
+    if (id==='compare')  renderCompare();
+    if (id==='payloads') renderPayloads();
+    if (id==='findings') renderFindings();
+  }
+}
+</script>
+</body>
+</html>
