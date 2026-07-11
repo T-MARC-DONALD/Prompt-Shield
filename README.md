@@ -537,6 +537,6 @@ If you use PromptShield in your research, please cite:
 
 Built for the advancement of AI security research 🛡️
 
-**ICT University · Yaoundé, Cameroon · 2026**
+** Yaoundé, Cameroon · 2026**
 
 </div>
