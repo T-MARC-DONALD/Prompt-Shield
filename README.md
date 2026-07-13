@@ -486,10 +486,10 @@ Phase 1 ✅  Payload library         55 payloads · 4 tiers · YAML schema
 Phase 2 ✅  Runner                  11 providers · 67 models · compare mode
 Phase 2 ✅  Classifier              4-strategy pipeline · confidence scoring
 Phase 3 ✅  Dashboard               Live CSV loading · auto-refresh · 5 pages
-Phase 4 ⬜  Defense layer           Input sanitizer · prompt hardening · output monitor
+Phase 4 ✅  Defense layer           Input sanitizer · prompt hardening · output monitor
 Phase 5 ⬜  Tier 5 multimodal       Image overlay injection · PDF document injection
 Phase 6 ⬜  Defense scoring         Pre/post defense comparison · improvement metrics
-Phase 7 ⬜  Web deployment          Flask API · hosted dashboard · shareable reports
+Phase 7 ✅  Web deployment          Flask API · hosted dashboard · shareable reports
 ```
 
 ---
