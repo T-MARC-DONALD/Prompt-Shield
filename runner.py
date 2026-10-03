@@ -30,6 +30,12 @@ Usage:
   python runner.py --model glm5                          # Zhipu AI GLM-5.2
 """
 
+import sys, io
+# Force UTF-8 output on Windows (fixes cp1252 emoji encoding errors)
+if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+
 import os
 import csv
 import json
@@ -40,6 +46,7 @@ import datetime
 import yaml
 from pathlib import Path
 from classifier import classify_detailed
+from defenses import analyze, DefenseAction
 
 # ─────────────────────────────────────────────
 # PAYLOADS / DB PATHS
@@ -509,7 +516,7 @@ def init_db(db_path: Path) -> sqlite3.Connection:
 def load_payloads(tier_filter: list[int] = None) -> list[dict]:
     files = sorted(PAYLOADS_DIR.glob("tier*.yaml"))
     if not files:
-        print(f"  ⚠️  No payload files found in: {PAYLOADS_DIR.resolve()}")
+        print(f"  [WARN]   No payload files found in: {PAYLOADS_DIR.resolve()}")
         return []
     all_payloads = []
     for file in files:
@@ -557,7 +564,7 @@ def classify_error(err_str: str) -> str:
 # REPORTING
 # ─────────────────────────────────────────────
 def print_result(payload, success, matched, response, latency, index, total):
-    status  = "✅ SUCCESS" if success else "🛡️  BLOCKED"
+    status  = "[BYPASS] SUCCESS" if success else "[SHIELD]  BLOCKED"
     preview = (response or "")[:80].replace("\n", " ")
     if len(response or "") > 80:
         preview += "..."
@@ -678,7 +685,8 @@ def print_compare_summary(conn, run_ids: list[tuple]):
 # SINGLE-MODEL RUN
 # ─────────────────────────────────────────────
 def run(model_alias: str = "claude", tier_filter: list[int] = None,
-        dry_run: bool = False, conn: sqlite3.Connection = None) -> str | None:
+        dry_run: bool = False, conn: sqlite3.Connection = None,
+        defense_mode: str = "off") -> str | None:
 
     provider, api_model, delay, env_key = resolve_model(model_alias)
     run_id  = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d_%H%M%S") \
@@ -687,12 +695,13 @@ def run(model_alias: str = "claude", tier_filter: list[int] = None,
 
     print()
     print("=" * 64)
-    print("  🛡️  PROMPTSHIELD — LLM Red-Teaming Runner")
+    print("  [SHIELD]  PROMPTSHIELD — LLM Red-Teaming Runner")
     print("=" * 64)
     print(f"  Run ID   : {run_id}")
     print(f"  Model    : {api_model}  (--model {model_alias})")
     print(f"  Provider : {provider.upper()}")
     print(f"  Tiers    : {tier_filter or 'ALL'}")
+    print(f"  Defense  : {defense_mode.upper()}")
     print(f"  Dry Run  : {dry_run}")
     if provider != "ollama":
         print(f"  Delay    : {delay}s between requests (~{int(60/delay)} RPM)")
@@ -710,12 +719,16 @@ def run(model_alias: str = "claude", tier_filter: list[int] = None,
         for i, p in enumerate(payloads, 1):
             print(f"[{i:02d}] {p['id']} | T{p['tier']} | {p['severity']} | {p['goal']}")
             print(f"     {get_prompt_text(p)[:120]}...")
+            if defense_mode != "off":
+                dr = analyze(get_prompt_text(p), tier=p.get("tier"), mode=defense_mode)
+                print(f"     defense[{defense_mode}] → {dr.action.value.upper()} "
+                      f"({dr.score:.0%}) {dr.explanation[:70]}")
             print()
         return None
 
     # check API key
     if env_key and not os.environ.get(env_key):
-        print(f"❌  {env_key} not set.")
+        print(f"[ERROR]  {env_key} not set.")
         if os.name == "nt":
             print(f"    cmd:        set {env_key}=your-key")
             print(f"    PowerShell: $env:{env_key}='your-key'")
@@ -760,6 +773,31 @@ def run(model_alias: str = "claude", tier_filter: list[int] = None,
         error     = None
         success   = False
         matched   = None
+        defended  = None
+
+        # ── DEFENSE LAYER ─────────────────────────────────────────
+        if defense_mode != "off":
+            dr = analyze(prompt, tier=payload.get("tier"), mode=defense_mode)
+            if dr.action == DefenseAction.BLOCK:
+                # Attack stopped before reaching the model — record and move on.
+                failures += 1
+                conn.execute("""
+                    INSERT INTO results (run_id, payload_id, tier, category, goal, severity,
+                        prompt_sent, response, success, matched_signal,
+                        response_length, latency_ms, error, timestamp)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, NULL, 0, 'DEFENSE_BLOCK', 0, 0, ?, ?)
+                """, (run_id, payload["id"], payload["tier"], payload["category"],
+                      payload["goal"], payload["severity"], prompt,
+                      f"DEFENSE_BLOCK: {dr.explanation[:150]}", timestamp))
+                conn.commit()
+                print(f"  [{i:02d}/{total}] [DEFENSE] BLOCKED | {payload['id']} | "
+                      f"T{payload['tier']} | {dr.score:.0%} | {dr.explanation[:55]}")
+                continue
+            elif dr.action == DefenseAction.SANITIZE:
+                prompt   = dr.sanitized      # send cleaned prompt to the model
+                defended = "SANITIZE"
+            elif dr.action == DefenseAction.ALERT:
+                defended = "ALERT"
 
         try:
             response, latency = call_llm(prompt, provider, api_model)
@@ -772,11 +810,11 @@ def run(model_alias: str = "claude", tier_filter: list[int] = None,
         except Exception as e:
             err_str   = str(e)
             error_code = classify_error(err_str)
-            print(f"  ⚠️  {error_code} on {payload['id']}: {err_str[:150]}")
+            print(f"  [WARN]   {error_code} on {payload['id']}: {err_str[:150]}")
 
             if error_code == "DAILY_QUOTA":
                 print()
-                print("  ❌  DAILY QUOTA EXHAUSTED — aborting run.")
+                print("  [ERROR]  DAILY QUOTA EXHAUSTED — aborting run.")
                 print(f"  Solutions:")
                 print(f"    • Wait for quota reset (usually midnight Pacific)")
                 print(f"    • Try a different provider: python runner.py --model groq-llama --tier 1")
@@ -788,7 +826,7 @@ def run(model_alias: str = "claude", tier_filter: list[int] = None,
 
             elif error_code == "PROVIDER_UNAVAILABLE":
                 # Upstream provider overloaded — short retries, then skip
-                print(f"  ℹ️  Provider temporarily unavailable. Trying 3 quick retries...")
+                print(f"  [INFO]   Provider temporarily unavailable. Trying 3 quick retries...")
                 recovered = False
                 for wait in [10, 20, 30]:
                     print(f"      Retrying in {wait}s...")
@@ -808,14 +846,14 @@ def run(model_alias: str = "claude", tier_filter: list[int] = None,
                 if not recovered:
                     error = "PROVIDER_UNAVAILABLE"
                     errors += 1
-                    print(f"  ⚠️  Skipping {payload['id']} — try a different free model:")
+                    print(f"  [WARN]   Skipping {payload['id']} — try a different free model:")
                     print(f"      python runner.py --model or-free-gemma --tier 1")
                     print(f"      python runner.py --model or-free-qwen  --tier 1")
                     print(f"      python runner.py --model or-free-ds    --tier 1")
                     print()
 
             elif error_code == "AUTH_ERROR":
-                print(f"\n  ❌  Authentication failed — check your {env_key}\n")
+                print(f"\n  [ERROR]  Authentication failed — check your {env_key}\n")
                 error  = error_code
                 errors += 1
                 abort  = True
@@ -863,9 +901,11 @@ def run(model_alias: str = "claude", tier_filter: list[int] = None,
         conn.commit()
 
         if error and not success:
-            print(f"  [{i:02d}/{total}] ❌ {error} | {payload['id']}")
+            print(f"  [{i:02d}/{total}] [ERROR] {error} | {payload['id']}")
         else:
             print_result(payload, success, matched, response, latency, i, total)
+        if defended:
+            print(f"           Defense : {defended} applied before/around this call")
 
         if i < total and not abort:
             time.sleep(delay)
@@ -880,8 +920,8 @@ def run(model_alias: str = "claude", tier_filter: list[int] = None,
 
     csv_path = export_csv(conn, run_id)
     print_summary(conn, run_id, elapsed, model_alias, provider, api_model)
-    print(f"  📄 CSV    : {csv_path}")
-    print(f"  🗄️  DB     : {DB_PATH}")
+    print(f"  [CSV]   CSV    : {csv_path}")
+    print(f"  [DB]     DB     : {DB_PATH}")
     print()
 
     if own_conn:
@@ -892,7 +932,8 @@ def run(model_alias: str = "claude", tier_filter: list[int] = None,
 # ─────────────────────────────────────────────
 # MULTI-MODEL COMPARE
 # ─────────────────────────────────────────────
-def compare(model_aliases: list[str], tier_filter: list[int] = None):
+def compare(model_aliases: list[str], tier_filter: list[int] = None,
+            defense_mode: str = "off"):
     """Run the same payload set against multiple models, then compare."""
     conn     = init_db(DB_PATH)
     run_ids  = []
@@ -902,9 +943,10 @@ def compare(model_aliases: list[str], tier_filter: list[int] = None):
 
     for alias in model_aliases:
         print(f"\n{'─'*64}")
-        print(f"  ▶  Running: {alias}")
+        print(f"  >  Running: {alias}")
         print(f"{'─'*64}")
-        rid = run(model_alias=alias, tier_filter=tier_filter, conn=conn)
+        rid = run(model_alias=alias, tier_filter=tier_filter, conn=conn,
+                  defense_mode=defense_mode)
         if rid:
             run_ids.append((alias, rid))
 
@@ -920,7 +962,7 @@ def list_free_models():
     import urllib.request, json
     key = os.environ.get("OPENROUTER_API_KEY", "")
     if not key:
-        print("❌  OPENROUTER_API_KEY not set.")
+        print("[ERROR]  OPENROUTER_API_KEY not set.")
         print("    Set it first: set OPENROUTER_API_KEY=sk-or-v1-...")
         return
 
@@ -960,7 +1002,7 @@ def list_free_models():
         print('  "my-model": ("openrouter", "provider/model-name:free", 20, "OPENROUTER_API_KEY"),')
 
     except Exception as e:
-        print(f"❌  Failed to fetch models: {e}")
+        print(f"[ERROR]  Failed to fetch models: {e}")
         print("    Check your OPENROUTER_API_KEY and internet connection.")
 
 
@@ -1012,6 +1054,9 @@ Examples:
                         help="Run any OpenRouter slug: --or-model nvidia/nemotron:free")
     parser.add_argument("--compare", nargs="+", metavar="MODEL",
                         help="Run multiple models and compare results")
+    parser.add_argument("--defense", choices=["off", "block", "sanitize", "alert"],
+                        default="off",
+                        help="Enable the defense layer: block | sanitize | alert (default: off)")
 
     args = parser.parse_args()
 
@@ -1050,10 +1095,12 @@ Examples:
         return
 
     if args.compare:
-        compare(model_aliases=args.compare, tier_filter=args.tiers)
+        compare(model_aliases=args.compare, tier_filter=args.tiers,
+                defense_mode=args.defense)
         return
 
-    run(model_alias=args.model, tier_filter=args.tiers, dry_run=args.dry_run)
+    run(model_alias=args.model, tier_filter=args.tiers, dry_run=args.dry_run,
+        defense_mode=args.defense)
 
 
 if __name__ == "__main__":

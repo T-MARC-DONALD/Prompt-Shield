@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Local chat page (PromptShield assistant-capture selftest)</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; }
+  .msg { border: 1px solid #ddd; padding: .75rem; margin: .5rem 0; }
+  #user-msg { background: #eef4ff; }
+  [data-testid='assistant-message'] { background: #f7f7f7; }
+</style>
+</head>
+<body>
+<h1>Chat echo page</h1>
+<div id="conversation"></div>
+<div style="margin-top:1rem">
+  <input id="prompt" style="width:70%" placeholder="type here">
+  <button id="send">Send</button>
+</div>
+<script>
+document.getElementById("send").addEventListener("click", function () {
+  var v = document.getElementById("prompt").value;
+  var conv = document.getElementById("conversation");
+  var user = document.createElement("div");
+  user.id = "user-msg";
+  user.className = "msg group/user-message";
+  user.setAttribute("role", "article");
+  user.textContent = "USER SAID: " + v;
+  conv.appendChild(user);
+  setTimeout(function () {
+    var bot = document.createElement("div");
+    bot.className = "msg font-ligatures-none assistant";
+    bot.setAttribute("data-testid", "assistant-message");
+    bot.setAttribute("role", "article");
+    bot.textContent = "ECHO: " + v;
+    conv.appendChild(bot);
+  }, 300);
+});
+</script>
+</body>
+</html>

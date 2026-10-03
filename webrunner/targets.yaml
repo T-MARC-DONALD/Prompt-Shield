@@ -1,0 +1,31 @@
+# App target definitions for the browser automation runner.
+#
+# Each target describes ONE app's interaction flow. Selectors must be tuned
+# per app and verified visually on first run. Only declare targets that are
+# in the active program's scope and that you are authorized to test.
+
+targets:
+
+  - name: selftest echo
+    note: local validation page; no external target
+    url: file:///.../selftest/echo.html
+    response_selector: "#response"
+    steps:
+      - {action: goto, value: "file:///.../selftest/echo.html"}
+      - {action: fill, selector: "#prompt", value: "{{PAYLOAD}}"}
+      - {action: click, selector: "#send"}
+      - {action: wait, ms: 500}
+
+  - name: TEMPLATE generic chat app
+    note: >
+      TEMPLATE ONLY. Replace the URL and selectors with the real values of an
+      app that is listed as in-scope in your program profile. Verify each
+      selector visually before running.
+    url: https://APP_URL_HERE/chat
+    response_selector: ".assistant-response"
+    steps:
+      - {action: goto, value: "https://APP_URL_HERE/chat"}
+      - {action: wait, ms: 1500}
+      - {action: fill, selector: "textarea#user-input", value: "{{PAYLOAD}}"}
+      - {action: click, selector: "button#send"}
+      - {action: wait, ms: 4000}

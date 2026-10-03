@@ -1,0 +1,36 @@
+# CLI agent targets for AutoRT's cli backend.
+#
+# Use these for agentic command-line tools (in 0din scope: Claude Code and
+# Codex). command is an argv list; {prompt} is substituted as ONE argv
+# element (quote-safe on Windows), {prompt_file} is substituted by the path
+# of a temp file containing the payload (for file-ingestion style tests).
+#
+# Run only authenticated CLIs you own, keep volumes low, and only target
+# apps the program lists as in-scope.
+
+cli_targets:
+
+  - name: claude-code
+    command: ["claude", "-p", "{prompt}"]
+    timeout_s: 180
+    note: Anthropic Claude Code CLI (0din app scope). Requires installation and auth.
+
+  - name: codex
+    command: ["codex", "exec", "{prompt}"]
+    timeout_s: 180
+    note: OpenAI Codex CLI (0din app scope). Requires installation and auth.
+
+  - name: template-file-agent
+    command: ["python", "mytool.py", "--input", "{prompt_file}"]
+    timeout_s: 120
+    note: Template for any local tool that reads a file; use for indirect-injection tests.
+
+  - name: selftest-echo
+    command: ["python", "webrunner/selftest/echo_cli.py", "{prompt}"]
+    timeout_s: 30
+    note: Offline validation target.
+
+  - name: selftest-file
+    command: ["python", "webrunner/selftest/echo_file_cli.py", "{prompt_file}"]
+    timeout_s: 30
+    note: Offline validation target for the prompt_file path.

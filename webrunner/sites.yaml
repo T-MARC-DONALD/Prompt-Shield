@@ -1,0 +1,172 @@
+# AI site profiles for the browser runner.
+#
+# Selector lists are CASCADES: the driver tries each in order and uses the
+# first that resolves. Run `python webrunner_cli.py calibrate --site NAME`
+# once per site (headed) to confirm selectors and log in; the persistent
+# profile at webrunner/profile keeps you signed in afterwards.
+#
+# Terms reality: consumer AI sites may restrict automated interaction in
+# their terms of service. Use your own accounts, keep volumes low, prefer
+# official APIs where a program expects API evidence, and for bug bounty
+# submissions only test apps listed as in-scope by the program.
+
+sites:
+
+  - name: perplexity
+    url: https://www.perplexity.ai/
+    login_note: Sign in once; the session persists in the profile.
+    selectors:
+      input:
+        - "textarea[placeholder*='Ask']"
+        - "textarea[placeholder*='ask']"
+        - "div[contenteditable='true']"
+        - "textarea"
+      send:
+        - "button[aria-label*='Submit']"
+        - "button[aria-label*='Send']"
+        - "button[type='submit']"
+      response:
+        - "div[class*='prose']"
+        - "div[class*='answer']"
+        - "div[class*='markdown']"
+        - "main"
+
+  - name: gemini
+    url: https://gemini.google.com/app
+    login_note: Sign in with your Google account once.
+    selectors:
+      input:
+        - "div.ql-editor[contenteditable='true']"
+        - "rich-textarea div[contenteditable='true']"
+        - "div[contenteditable='true']"
+      send:
+        - "button[aria-label*='Send']"
+        - "button.send-button"
+        - "button[aria-label*='submit']"
+      response:
+        - "message-content"
+        - "div[class*='model-response-text']"
+        - "div[class*='response-container']"
+
+  - name: deepseek
+    url: https://chat.deepseek.com/
+    login_note: Sign in once with email or Google.
+    selectors:
+      input:
+        - "textarea#chat-input"
+        - "textarea"
+        - "div[contenteditable='true']"
+      send:
+        - "div[class*='send']"
+        - "button[type='submit']"
+        - "button[aria-label*='Send']"
+      response:
+        - "div[class*='markdown']"
+        - "div[class*='ds-markdown']"
+        - "div[class*='message']"
+
+  - name: chatgpt
+    url: https://chatgpt.com/
+    login_note: >
+      Sign in once. Note: OpenAI's terms restrict automated access to the
+      consumer product; prefer the API for program submissions.
+    selectors:
+      input:
+        - "div#prompt-textarea[contenteditable='true']"
+        - "textarea#prompt-textarea"
+        - "div[contenteditable='true']"
+      send:
+        - "button[data-testid='send-button']"
+        - "button[aria-label*='Send']"
+      response:
+        - "div[data-message-author-role='assistant']"
+        - "div[class*='markdown']"
+
+  - name: copilot
+    url: https://copilot.microsoft.com/
+    login_note: Sign in with a Microsoft account once. Copilot is also a 0din model-scope entry.
+    probe_text: "Reply with exactly: PROBE-OK"
+    response_exclude: ["user", "human", "composer", "sidebar"]
+    selectors:
+      input:
+        - "#userInput"
+        - "[data-testid='composer-input']"
+        - "textarea[placeholder*='Message']"
+        - "textarea[role='textbox']"
+      send:
+        - "button[aria-label*='Submit']"
+        - "button[data-testid*='send']"
+        - "form button[type='submit']"
+        - "button[type='submit']"
+      response:
+        - "[data-testid='ai-message-body']"
+        - "[data-testid='ai-message']"
+        - "[data-testid*='ai-message']"
+        - "div[role='article']"
+
+  - name: claude-web
+    url: https://claude.ai/new
+    login_note: Sign in with your Anthropic account once.
+    selectors:
+      input:
+        - "div[contenteditable='true'].ProseMirror"
+        - "div[contenteditable='true']"
+        - "textarea"
+      send:
+        - "button[aria-label*='Send']"
+        - "button[type='submit']"
+      response:
+        - "div[class*='font-claude-message']"
+        - "div[class*='prose']"
+        - "div[class*='markdown']"
+
+  - name: grok
+    url: https://grok.com/
+    login_note: Sign in with your X account once. Grok guardrail bypasses are out of scope on 0din.
+    selectors:
+      input:
+        - "textarea[placeholder*='Ask']"
+        - "textarea"
+        - "div[contenteditable='true']"
+      send:
+        - "button[type='submit']"
+        - "button[aria-label*='Submit']"
+        - "button[aria-label*='Send']"
+      response:
+        - "div[class*='message']"
+        - "div[class*='prose']"
+        - "div[class*='markdown']"
+
+  - name: lechat
+    url: https://chat.mistral.ai/chat
+    login_note: Sign in with a Mistral account once.
+    selectors:
+      input:
+        - "textarea"
+        - "div[contenteditable='true']"
+      send:
+        - "button[aria-label*='Send']"
+        - "button[type='submit']"
+      response:
+        - "div[class*='prose']"
+        - "div[class*='markdown']"
+        - "main"
+
+  - name: selftest_echo
+    url: file:///.../webrunner/selftest/echo.html
+    login_note: local validation page; no login
+    probe_text: "Reply with exactly: PROBE-OK"
+    selectors:
+      input: ["#does-not-exist", "#prompt"]
+      send: ["#nope", "#send"]
+      response: ["#missing", "#response"]
+
+  - name: selftest_chat
+    url: file:///.../webrunner/selftest/chat_echo.html
+    login_note: local chat validation page; no login
+    probe_text: "Chat probe message for text-block dump"
+    response_exclude: ["user", "human"]
+    selectors:
+      input: ["#prompt"]
+      send: ["#send"]
+      response: ["[data-testid*='message']", "div[role='article']", "#conversation"]

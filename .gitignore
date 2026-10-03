@@ -55,3 +55,26 @@ logs/
 ehthumbs.db
 Thumbs.db
 desktop.ini
+
+# --- Local-only (not published) ---
+# Active bounty / private materials
+bounty/
+bounty_cli.py
+BOUNTY.md
+programs/
+COPILOT.md
+screen shots/
+SUPERVISOR_BRIEFING.md
+payloads/tier5_appinjection.yaml
+payloads/tier5_escalation.yaml
+tests/test_bounty.py
+
+# Browser profile and local state
+webrunner/profile/
+.claude/
+*.bak-*
+
+# SQLite side files
+*.db-wal
+*.db-shm
+*.db-journal

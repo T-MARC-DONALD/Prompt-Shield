@@ -3,839 +3,1298 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PromptShield — Attack Dashboard</title>
+<title>PromptShield</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
-:root{
-  --bg:#0a0c10;--surface:#111318;--surface2:#181c24;
-  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
-  --text:#e8eaf0;--muted:#7a7f8e;--accent:#4f8ef7;
-  --danger:#e24b4a;--warning:#eda100;--success:#1baf7a;
-  --font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace;
-  --radius:10px;
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap');
+:root {
+  --bg:       #080a0f;
+  --surface:  #0e1117;
+  --s2:       #141820;
+  --s3:       #1c2230;
+  --border:   rgba(255,255,255,0.06);
+  --border2:  rgba(255,255,255,0.11);
+  --text:     #dde2ec;
+  --muted:    #6b7385;
+  --dim:      #3d4455;
+  --accent:   #3b82f6;
+  --accent2:  #6366f1;
+  --red:      #ef4444;
+  --orange:   #f97316;
+  --yellow:   #eab308;
+  --green:    #22c55e;
+  --font:     'Inter', system-ui, sans-serif;
+  --mono:     'IBM Plex Mono', monospace;
+  --r:        8px;
+  --r2:       12px;
 }
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.6;min-height:100vh}
-.shell{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
-.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:1.5rem 1rem;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:1.5rem;overflow-y:auto}
-.main{padding:2rem;overflow-x:hidden}
-.logo{display:flex;align-items:center;gap:10px;font-weight:600;font-size:15px;letter-spacing:-.01em}
-.logo-icon{width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#4f8ef7,#7c4dff);display:flex;align-items:center;justify-content:center;font-size:16px}
-.nav-label{font-size:10px;font-weight:600;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:.4rem}
-.nav-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:7px;cursor:pointer;color:var(--muted);font-size:13px;transition:all .15s;border:none;background:none;width:100%;text-align:left}
-.nav-item:hover{background:var(--surface2);color:var(--text)}
-.nav-item.active{background:rgba(79,142,247,.15);color:var(--accent)}
-.nav-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.sb-stat{background:var(--surface2);border-radius:var(--radius);padding:.7rem 1rem}
-.sb-stat .val{font-size:20px;font-weight:600;font-variant-numeric:tabular-nums}
-.sb-stat .lbl{font-size:11px;color:var(--muted);margin-top:1px}
-.page-header{margin-bottom:1.5rem}
-.page-title{font-size:22px;font-weight:600;letter-spacing:-.02em;margin-bottom:.2rem}
-.page-sub{color:var(--muted);font-size:13px}
-.model-tabs{display:flex;gap:6px;margin-bottom:1.5rem;flex-wrap:wrap;align-items:center}
-.model-tab{padding:6px 14px;border-radius:20px;border:1px solid var(--border2);background:none;color:var(--muted);cursor:pointer;font-size:13px;font-family:var(--font);transition:all .15s}
-.model-tab:hover{border-color:var(--accent);color:var(--text)}
-.model-tab.active{background:rgba(79,142,247,.15);border-color:var(--accent);color:var(--accent)}
-.kpi-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:1.5rem}
-.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem}
-.kpi-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
-.kpi-value{font-size:26px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
-.kpi-sub{font-size:11px;color:var(--muted);margin-top:3px}
-.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:1.5rem}
-.grid-score{display:grid;grid-template-columns:170px 1fr;gap:14px;margin-bottom:1.5rem}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem}
-.card-title{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:1rem}
-.score-ring-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;display:flex;flex-direction:column;align-items:center;gap:.5rem}
-.score-ring{position:relative;width:110px;height:110px}
-.score-ring svg{width:110px;height:110px;transform:rotate(-90deg)}
-.score-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
-.score-num{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
-.score-label{font-size:10px;color:var(--muted)}
-.tier-list{display:flex;flex-direction:column;gap:12px}
-.tier-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
-.tier-name{font-size:13px;font-weight:500}
-.tier-meta{font-size:11px;color:var(--muted)}
-.tier-track{height:6px;background:var(--border2);border-radius:3px;overflow:hidden}
-.tier-fill{height:100%;border-radius:3px}
-.cat-list{display:flex;flex-direction:column;gap:7px}
-.cat-row{display:flex;align-items:center;gap:8px}
-.cat-label{width:155px;font-size:12px;color:var(--muted);text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cat-track{flex:1;height:14px;background:var(--border2);border-radius:3px;overflow:hidden}
-.cat-fill{height:100%;border-radius:3px;display:flex;align-items:center;padding-left:5px;font-size:10px;font-weight:600;color:rgba(255,255,255,.9)}
-.cat-pct{width:36px;font-size:11px;color:var(--muted);text-align:right;flex-shrink:0}
-.payload-table{width:100%;border-collapse:collapse;font-size:12px}
-.payload-table th{color:var(--muted);font-weight:500;text-align:left;padding:6px 10px;border-bottom:1px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:.05em}
-.payload-table td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:top}
-.payload-table tr:last-child td{border-bottom:none}
-.payload-table tr:hover td{background:var(--surface2)}
-.pid{font-family:var(--mono);font-size:11px;color:var(--accent)}
-.sev-badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600}
-.sev-critical{background:rgba(226,75,74,.2);color:#f09595}
-.sev-high{background:rgba(236,131,90,.2);color:#ec835a}
-.sev-medium{background:rgba(237,161,0,.2);color:#eda100}
-.sev-low{background:rgba(27,175,122,.2);color:#1baf7a}
-.status-dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:4px}
-.s-bypass{background:var(--danger)}
-.s-block{background:var(--success)}
-.page{display:none}
-.page.active{display:block}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { color-scheme: dark; }
+body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.5; min-height: 100vh; }
 
-/* loader / empty states */
-.loader-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4rem 2rem;gap:1rem;color:var(--muted);text-align:center}
-.loader-wrap h2{font-size:16px;font-weight:500;color:var(--text)}
-.loader-wrap p{font-size:13px;max-width:360px;line-height:1.6}
-.btn-primary{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;cursor:pointer;font-family:var(--font);font-weight:500;transition:opacity .15s}
-.btn-primary:hover{opacity:.85}
-.btn-ghost{background:none;color:var(--muted);border:1px solid var(--border2);border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer;font-family:var(--font);transition:all .15s}
-.btn-ghost:hover{color:var(--text);border-color:var(--accent)}
+/* ── layout ── */
+.app    { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+.side   { background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+.body   { display: flex; flex-direction: column; min-height: 100vh; overflow: hidden; }
+.topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: .75rem 1.5rem; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.main   { flex: 1; padding: 1.5rem; overflow-y: auto; }
 
-/* status bar */
-.status-bar{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);padding:.5rem 0;margin-bottom:1rem;border-bottom:1px solid var(--border)}
-.status-dot-sm{width:6px;height:6px;border-radius:50%;background:var(--success)}
-.status-dot-sm.loading{background:var(--warning);animation:pulse 1s infinite}
-.status-dot-sm.error{background:var(--danger)}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+/* ── sidebar ── */
+.logo   { padding: 1.25rem 1rem 1rem; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); }
+.logo-mark { width: 30px; height: 30px; background: linear-gradient(135deg,var(--accent),var(--accent2)); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+.logo-text { font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
+.logo-sub  { font-size: 10px; color: var(--muted); margin-top: 1px; }
+.nav    { padding: .75rem .75rem 0; display: flex; flex-direction: column; gap: 2px; }
+.nav-section { font-size: 10px; font-weight: 600; letter-spacing: .1em; color: var(--dim); text-transform: uppercase; padding: .75rem .5rem .35rem; }
+.nav-item { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: var(--r); cursor: pointer; color: var(--muted); font-size: 13px; border: none; background: none; width: 100%; text-align: left; transition: all .12s; position: relative; }
+.nav-item:hover  { background: var(--s2); color: var(--text); }
+.nav-item.active { background: rgba(59,130,246,.12); color: var(--accent); }
+.nav-item .icon  { width: 16px; text-align: center; flex-shrink: 0; font-size: 14px; }
+.nav-item .badge { margin-left: auto; font-size: 10px; padding: 1px 6px; border-radius: 10px; background: rgba(59,130,246,.2); color: var(--accent); }
+.side-bottom { margin-top: auto; padding: .75rem; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
+.side-stat { background: var(--s2); border-radius: var(--r); padding: .6rem .875rem; }
+.side-stat .v { font-size: 19px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.side-stat .l { font-size: 10px; color: var(--muted); margin-top: 1px; }
+.srv-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+.srv-ok   { background: var(--green); }
+.srv-err  { background: var(--red); }
+.srv-spin { background: var(--yellow); animation: blink 1s infinite; }
+@keyframes blink { 0%,100%{opacity:1}50%{opacity:.3} }
 
-/* comparison */
-.cmp-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px}
-.cmp-label{width:130px;color:var(--muted);text-align:right;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.cmp-bars{flex:1;display:flex;flex-direction:column;gap:3px}
-.cmp-bar{height:10px;border-radius:3px;display:flex;align-items:center;padding-left:5px;font-size:9px;font-weight:600;color:rgba(255,255,255,.9);white-space:nowrap;min-width:2px}
-.finding-row{display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px;line-height:1.5}
-.finding-row:last-child{border-bottom:none}
+/* ── topbar ── */
+.page-title { font-size: 15px; font-weight: 600; }
+.page-sub   { font-size: 12px; color: var(--muted); }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.tag  { font-size: 11px; padding: 3px 8px; border-radius: 4px; background: var(--s2); color: var(--muted); border: 1px solid var(--border2); }
+
+/* ── buttons ── */
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--r); font-size: 13px; font-family: var(--font); font-weight: 500; cursor: pointer; transition: all .12s; border: none; }
+.btn-primary  { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: #2563eb; }
+.btn-primary:disabled { opacity: .4; cursor: not-allowed; }
+.btn-danger   { background: rgba(239,68,68,.15); color: var(--red); border: 1px solid rgba(239,68,68,.3); }
+.btn-danger:hover { background: rgba(239,68,68,.25); }
+.btn-ghost    { background: none; color: var(--muted); border: 1px solid var(--border2); }
+.btn-ghost:hover { color: var(--text); border-color: var(--border2); background: var(--s2); }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+
+/* ── pages ── */
+.page { display: none; }
+.page.active { display: block; }
+
+/* ── cards ── */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r2); padding: 1.25rem; }
+.card-title { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; margin-bottom: .875rem; }
+.kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-bottom: 1.25rem; }
+.kpi  { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r2); padding: 1rem 1.25rem; }
+.kpi-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
+.kpi-value { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.kpi-sub   { font-size: 11px; color: var(--muted); margin-top: 3px; }
+.g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.25rem; }
+.g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 1.25rem; }
+
+/* ── model grid ── */
+.provider-section { margin-bottom: 1.5rem; }
+.provider-header { display: flex; align-items: center; gap: 8px; margin-bottom: .75rem; }
+.provider-name { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+.provider-badge { font-size: 10px; padding: 2px 7px; border-radius: 4px; }
+.pb-free { background: rgba(34,197,94,.12); color: var(--green); }
+.pb-paid { background: rgba(107,114,133,.12); color: var(--muted); }
+.model-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.model-card { background: var(--s2); border: 1px solid var(--border); border-radius: var(--r); padding: .75rem 1rem; cursor: pointer; transition: all .15s; position: relative; }
+.model-card:hover { border-color: var(--accent); background: rgba(59,130,246,.06); }
+.model-card.selected { border-color: var(--accent); background: rgba(59,130,246,.1); }
+.model-card.locked { opacity: .45; cursor: not-allowed; }
+.model-card.locked:hover { border-color: var(--border); background: var(--s2); }
+.mc-alias { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+.mc-model  { font-size: 11px; color: var(--muted); font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mc-rpm    { font-size: 10px; color: var(--dim); margin-top: 4px; }
+.mc-lock   { position: absolute; top: 8px; right: 8px; font-size: 11px; color: var(--dim); }
+.mc-free   { position: absolute; top: 8px; right: 8px; font-size: 10px; padding: 1px 5px; border-radius: 3px; background: rgba(34,197,94,.15); color: var(--green); }
+
+/* ── run controls ── */
+.run-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r2); padding: 1.25rem; margin-bottom: 1.25rem; }
+.tier-checks { display: flex; gap: 8px; flex-wrap: wrap; margin: .75rem 0; }
+.tier-check  { display: flex; align-items: center; gap: 6px; background: var(--s2); border: 1px solid var(--border2); border-radius: var(--r); padding: 6px 12px; cursor: pointer; font-size: 13px; color: var(--muted); transition: all .12s; user-select: none; }
+.tier-check.checked { background: rgba(59,130,246,.12); border-color: var(--accent); color: var(--accent); }
+.tier-check input { display: none; }
+
+/* ── terminal ── */
+.terminal { background: #060809; border: 1px solid var(--border2); border-radius: var(--r); font-family: var(--mono); font-size: 12px; line-height: 1.6; padding: 1rem; height: 340px; overflow-y: auto; color: #a8b4c8; }
+.terminal .t-line   { white-space: pre-wrap; word-break: break-all; }
+.terminal .t-bypass { color: #ef4444; }
+.terminal .t-block  { color: #22c55e; }
+.terminal .t-info   { color: #6b7385; }
+.terminal .t-header { color: #3b82f6; font-weight: 500; }
+.terminal .t-warn   { color: #eab308; }
+.terminal .t-done   { color: #a78bfa; }
+
+/* ── results ── */
+.hbar-row   { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; font-size: 12px; }
+.hbar-label { width: 150px; color: var(--muted); text-align: right; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hbar-track { flex: 1; height: 14px; background: var(--s3); border-radius: 3px; overflow: hidden; }
+.hbar-fill  { height: 100%; border-radius: 3px; display: flex; align-items: center; padding-left: 5px; font-size: 10px; font-weight: 600; color: rgba(255,255,255,.85); white-space: nowrap; min-width: 4px; }
+.hbar-pct   { width: 38px; font-size: 11px; color: var(--muted); text-align: right; flex-shrink: 0; }
+
+/* ── score ring ── */
+.ring-wrap  { display: flex; flex-direction: column; align-items: center; gap: .5rem; }
+.ring       { position: relative; width: 100px; height: 100px; }
+.ring svg   { width: 100px; height: 100px; transform: rotate(-90deg); }
+.ring-center{ position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.ring-num   { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ring-lbl   { font-size: 9px; color: var(--muted); letter-spacing: .05em; }
+
+/* ── table ── */
+.tbl        { width: 100%; border-collapse: collapse; font-size: 12px; }
+.tbl th     { color: var(--muted); font-weight: 500; text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
+.tbl td     { padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.tbl tr:last-child td { border-bottom: none; }
+.tbl tr:hover td { background: var(--s2); }
+.mono       { font-family: var(--mono); font-size: 11px; }
+.sev        { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+.sev-critical { background: rgba(239,68,68,.15);  color: #fca5a5; }
+.sev-high     { background: rgba(249,115,22,.15); color: #fdba74; }
+.sev-medium   { background: rgba(234,179,8,.15);  color: #fde047; }
+.sev-low      { background: rgba(34,197,94,.15);  color: #86efac; }
+.dot        { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+.dot-r { background: var(--red); }
+.dot-g { background: var(--green); }
+
+/* ── key manager ── */
+.key-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.key-row  { display: flex; align-items: center; gap: 8px; background: var(--s2); border: 1px solid var(--border); border-radius: var(--r); padding: .6rem .875rem; }
+.key-name { font-family: var(--mono); font-size: 11px; color: var(--muted); flex: 1; }
+.key-status { font-size: 11px; white-space: nowrap; }
+.key-input  { flex: 2; background: var(--bg); border: 1px solid var(--border2); border-radius: 5px; padding: 4px 8px; font-family: var(--mono); font-size: 11px; color: var(--text); outline: none; }
+.key-input:focus { border-color: var(--accent); }
+.key-input::placeholder { color: var(--dim); }
+
+/* ── model selector bar (run page) ── */
+.sel-bar { display: flex; align-items: center; gap: 8px; background: var(--s2); border: 1px solid var(--border2); border-radius: var(--r); padding: .6rem 1rem; margin-bottom: 1rem; }
+.sel-label { font-size: 12px; color: var(--muted); flex-shrink: 0; }
+.sel-model { font-size: 13px; font-weight: 500; color: var(--accent); }
+.sel-clear { margin-left: auto; }
+
+/* ── compare bars ── */
+.cmp-bar-wrap { display: flex; flex-direction: column; gap: 3px; }
+.cmp-bar      { height: 10px; border-radius: 3px; display: flex; align-items: center; padding-left: 5px; font-size: 9px; font-weight: 600; color: rgba(255,255,255,.85); white-space: nowrap; min-width: 4px; }
+
+/* ── empty state ── */
+.empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem 2rem; gap: 1rem; color: var(--muted); text-align: center; }
+.empty-icon { font-size: 40px; opacity: .4; }
+.empty h3   { font-size: 15px; font-weight: 500; color: var(--text); }
+.empty p    { font-size: 13px; max-width: 340px; }
+
+/* ── filters ── */
+.filter-bar { display: flex; gap: 6px; margin-bottom: 1rem; flex-wrap: wrap; }
+.filter-sel { background: var(--surface); border: 1px solid var(--border2); color: var(--text); padding: 5px 10px; border-radius: 6px; font-size: 12px; font-family: var(--font); outline: none; }
+.filter-sel:focus { border-color: var(--accent); }
 </style>
 </head>
 <body>
-<div class="shell">
+<div class="app">
 
 <!-- SIDEBAR -->
-<aside class="sidebar">
-  <div class="logo"><div class="logo-icon">🛡</div>PromptShield</div>
+<aside class="side">
+  <div class="logo">
+    <div class="logo-mark">PS</div>
+    <div>
+      <div class="logo-text">PromptShield</div>
+      <div class="logo-sub">LLM Red-Teaming Suite</div>
+    </div>
+  </div>
 
-  <nav>
-    <div class="nav-label">Views</div>
-    <button class="nav-item active" onclick="showPage('overview',this)"><div class="nav-dot" style="background:#4f8ef7"></div>Overview</button>
-    <button class="nav-item" onclick="showPage('tiers',this)"><div class="nav-dot" style="background:#ec835a"></div>Tier Analysis</button>
-    <button class="nav-item" onclick="showPage('compare',this)"><div class="nav-dot" style="background:#1baf7a"></div>Model Compare</button>
-    <button class="nav-item" onclick="showPage('payloads',this)"><div class="nav-dot" style="background:#eda100"></div>Payload Log</button>
-    <button class="nav-item" onclick="showPage('findings',this)"><div class="nav-dot" style="background:#7c4dff"></div>Findings</button>
+  <nav class="nav">
+    <div class="nav-section">Attack</div>
+    <button class="nav-item active" onclick="nav('models',this)">
+      Models
+      <span class="badge" id="nav-available">—</span>
+    </button>
+    <button class="nav-item" onclick="nav('run',this)">
+      Run Attack
+    </button>
+
+    <div class="nav-section">Results</div>
+    <button class="nav-item" onclick="nav('overview',this)">
+      Overview
+    </button>
+    <button class="nav-item" onclick="nav('tiers',this)">
+      Tier Analysis
+    </button>
+    <button class="nav-item" onclick="nav('compare',this)">
+      Compare
+    </button>
+    <button class="nav-item" onclick="nav('payloads',this)">
+      Payload Log
+    </button>
+
+    <div class="nav-section">Defense</div>
+    <button class="nav-item" onclick="nav('defense',this)">
+      Defense Engine
+    </button>
+
+    <div class="nav-section">Config</div>
+    <button class="nav-item" onclick="nav('keys',this)">
+      API Keys
+    </button>
   </nav>
 
-  <div style="display:flex;flex-direction:column;gap:8px;margin-top:auto">
-    <div class="nav-label">Active Model</div>
-    <div class="sb-stat"><div class="val" id="sb-model" style="font-size:13px">—</div><div class="lbl" id="sb-info">No data loaded</div></div>
-    <div class="sb-stat"><div class="val" id="sb-score" style="color:var(--muted)">—</div><div class="lbl">Security score / 100</div></div>
-    <div class="sb-stat"><div class="val" id="sb-bypass" style="color:var(--muted)">—</div><div class="lbl">Bypass rate</div></div>
-    <button class="btn-ghost" style="width:100%;font-size:12px" onclick="openFolder()">📂 Load results folder</button>
-    <button class="btn-ghost" style="width:100%;font-size:12px" onclick="refreshAll()">🔄 Refresh now</button>
+  <div class="side-bottom">
+    <div class="side-stat">
+      <div class="v" id="sb-score" style="color:var(--muted)">—</div>
+      <div class="l">Security score / 100</div>
+    </div>
+    <div class="side-stat">
+      <div class="v" id="sb-rate" style="color:var(--muted)">—</div>
+      <div class="l">Bypass rate · <span id="sb-model" style="color:var(--dim)">no model</span></div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);padding:.25rem .25rem 0;display:flex;align-items:center;gap:6px">
+      <span class="srv-dot" id="srv-dot-sm"></span>
+      <span id="srv-status-sm">Connecting…</span>
+    </div>
   </div>
 </aside>
 
-<!-- MAIN -->
-<main class="main">
+<!-- BODY -->
+<div class="body">
 
-<!-- STATUS BAR -->
-<div class="status-bar">
-  <div class="status-dot-sm" id="status-dot"></div>
-  <span id="status-text">No folder loaded — click "Load results folder" to begin</span>
-  <span style="margin-left:auto" id="last-updated"></span>
-</div>
-
-<!-- MODEL TABS (dynamic) -->
-<div class="model-tabs" id="model-tabs">
-  <span style="font-size:12px;color:var(--muted)">Load your results folder to see models</span>
-</div>
-
-<!-- OVERVIEW -->
-<div id="page-overview" class="page active">
-  <div class="page-header">
-    <div class="page-title">Attack Overview</div>
-    <div class="page-sub" id="ov-sub">Load results to populate</div>
+<!-- TOPBAR -->
+<div class="topbar">
+  <div>
+    <div class="page-title" id="topbar-title">Models</div>
+    <div class="page-sub" id="topbar-sub">Select a model to attack</div>
   </div>
-  <div id="overview-content">
-    <div class="loader-wrap">
-      <div style="font-size:48px">🛡️</div>
-      <h2>No data loaded</h2>
-      <p>Click "Load results folder" in the sidebar and select your PromptShield <code style="color:var(--accent)">results/</code> folder. The dashboard reads all CSV files automatically.</p>
-      <button class="btn-primary" onclick="openFolder()">📂 Load results folder</button>
+  <div class="topbar-right">
+    <span class="tag" id="srv-tag" style="display:none">
+      <span class="srv-dot srv-spin" id="srv-dot"></span>
+      <span id="srv-status">Connecting…</span>
+    </span>
+    <button class="btn btn-ghost btn-sm" onclick="refreshAll()">Refresh</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+<!-- ═══ MODELS PAGE ═══ -->
+<div id="page-models" class="page active">
+  <div id="models-content">
+    <div class="empty"><h3>Loading models…</h3></div>
+  </div>
+</div>
+
+<!-- ═══ RUN PAGE ═══ -->
+<div id="page-run" class="page">
+  <div id="sel-bar-wrap" style="display:none" class="sel-bar">
+    <span class="sel-label">Selected model:</span>
+    <span class="sel-model" id="sel-model-name">—</span>
+    <button class="btn btn-ghost btn-sm sel-clear" onclick="nav('models',document.querySelector('.nav-item'))">Change</button>
+  </div>
+  <div class="run-panel">
+    <div class="card-title">Attack configuration</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:.75rem">Select tiers (leave all unchecked to run all 55 payloads)</div>
+    <div class="tier-checks">
+      <label class="tier-check" id="tc1"><input type="checkbox" value="1" onchange="toggleTier(this)"> Tier 1 — Direct injection (15)</label>
+      <label class="tier-check" id="tc2"><input type="checkbox" value="2" onchange="toggleTier(this)"> Tier 2 — Persona hijacking (15)</label>
+      <label class="tier-check" id="tc3"><input type="checkbox" value="3" onchange="toggleTier(this)"> Tier 3 — Indirect injection (10)</label>
+      <label class="tier-check" id="tc4"><input type="checkbox" value="4" onchange="toggleTier(this)"> Tier 4 — Encoding / obfuscation (15)</label>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:1rem;align-items:center;flex-wrap:wrap">
+      <span style="font-size:12px;color:var(--muted)">Defense layer:</span>
+      <select class="filter-sel" id="defense-mode" style="min-width:300px">
+        <option value="off">Off — raw attack (baseline)</option>
+        <option value="block">Block — stop detected payloads before the model</option>
+        <option value="sanitize">Sanitize — clean detected payloads, then send</option>
+        <option value="alert">Alert — send with a flag</option>
+      </select>
+      <span style="font-size:11px;color:var(--dim)">Detected payloads are handled before the model call.</span>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:.75rem;align-items:center">
+      <button class="btn btn-primary" id="run-btn" onclick="startRun()">Start Attack</button>
+      <button class="btn btn-danger" id="stop-btn" style="display:none" onclick="stopRun()">Stop</button>
+      <button class="btn btn-ghost btn-sm" onclick="startRun(true)">Dry run (no API calls)</button>
+      <span id="run-status-label" style="font-size:12px;color:var(--muted);margin-left:8px"></span>
+    </div>
+  </div>
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+      <div class="card-title" style="margin:0">Terminal output</div>
+      <button class="btn btn-ghost btn-sm" onclick="clearTerminal()">Clear</button>
+    </div>
+    <div class="terminal" id="terminal">
+      <div class="t-line t-info">  PromptShield ready. Select a model and start an attack.</div>
     </div>
   </div>
 </div>
 
-<!-- TIER ANALYSIS -->
+<!-- ═══ OVERVIEW PAGE ═══ -->
+<div id="page-overview" class="page">
+  <div id="overview-content">
+    <div class="empty"><h3>No results yet</h3><p>Run an attack to see results here, or wait for auto-refresh.</p></div>
+  </div>
+</div>
+
+<!-- ═══ TIERS PAGE ═══ -->
 <div id="page-tiers" class="page">
-  <div class="page-header"><div class="page-title">Tier Analysis</div><div class="page-sub">Vulnerability by attack technique</div></div>
-  <div id="tiers-content"><div class="loader-wrap"><p style="color:var(--muted)">Load results folder first</p></div></div>
+  <div id="tiers-content">
+    <div class="empty"><h3>No results yet</h3></div>
+  </div>
 </div>
 
-<!-- COMPARE -->
+<!-- ═══ COMPARE PAGE ═══ -->
 <div id="page-compare" class="page">
-  <div class="page-header"><div class="page-title">Model Comparison</div><div class="page-sub" id="cmp-sub">All loaded models</div></div>
-  <div id="compare-content"><div class="loader-wrap"><p style="color:var(--muted)">Load results folder first</p></div></div>
+  <div id="compare-content">
+    <div class="empty"><h3>No results yet</h3><p>Run attacks against multiple models to compare them here.</p></div>
+  </div>
 </div>
 
-<!-- PAYLOAD LOG -->
+<!-- ═══ PAYLOAD LOG PAGE ═══ -->
 <div id="page-payloads" class="page">
-  <div class="page-header"><div class="page-title">Payload Log</div><div class="page-sub">All attack results for active model</div></div>
-  <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">
-    <select id="filter-tier" onchange="renderPayloads()" style="background:var(--surface);border:1px solid var(--border2);color:var(--text);padding:6px 10px;border-radius:6px;font-size:12px">
-      <option value="">All tiers</option>
-      <option value="1">Tier 1 — Direct</option>
-      <option value="2">Tier 2 — Persona</option>
-      <option value="3">Tier 3 — Indirect</option>
-      <option value="4">Tier 4 — Encoding</option>
-    </select>
-    <select id="filter-status" onchange="renderPayloads()" style="background:var(--surface);border:1px solid var(--border2);color:var(--text);padding:6px 10px;border-radius:6px;font-size:12px">
-      <option value="">All results</option><option value="1">Bypassed</option><option value="0">Blocked</option>
-    </select>
-    <select id="filter-sev" onchange="renderPayloads()" style="background:var(--surface);border:1px solid var(--border2);color:var(--text);padding:6px 10px;border-radius:6px;font-size:12px">
-      <option value="">All severity</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option>
-    </select>
-    <span id="filter-count" style="font-size:12px;color:var(--muted);align-self:center;margin-left:4px"></span>
+  <div class="filter-bar">
+    <select class="filter-sel" id="f-model"  onchange="renderPayloads()"><option value="">All models</option></select>
+    <select class="filter-sel" id="f-tier"   onchange="renderPayloads()"><option value="">All tiers</option><option value="1">Tier 1</option><option value="2">Tier 2</option><option value="3">Tier 3</option><option value="4">Tier 4</option></select>
+    <select class="filter-sel" id="f-status" onchange="renderPayloads()"><option value="">All results</option><option value="1">Bypassed</option><option value="0">Blocked</option></select>
+    <select class="filter-sel" id="f-sev"    onchange="renderPayloads()"><option value="">All severity</option><option value="critical">Critical</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select>
+    <span id="f-count" style="font-size:12px;color:var(--muted);align-self:center;margin-left:4px"></span>
   </div>
   <div class="card" style="padding:0;overflow:hidden">
-    <table class="payload-table">
-      <thead><tr><th>ID</th><th>Run</th><th>Tier</th><th>Category</th><th>Goal</th><th>Severity</th><th>Status</th><th>Signal</th></tr></thead>
-      <tbody id="payload-tbody"><tr><td colspan="8" style="text-align:center;color:var(--muted);padding:2rem">Load results folder first</td></tr></tbody>
+    <table class="tbl">
+      <thead><tr><th>ID</th><th>Model</th><th>Tier</th><th>Category</th><th>Goal</th><th>Severity</th><th>Result</th><th>Signal</th><th>ms</th></tr></thead>
+      <tbody id="payload-tbody"><tr><td colspan="9" style="text-align:center;color:var(--muted);padding:2rem">Run an attack first</td></tr></tbody>
     </table>
   </div>
 </div>
 
-<!-- FINDINGS -->
-<div id="page-findings" class="page">
-  <div class="page-header"><div class="page-title">Research Findings</div><div class="page-sub">Auto-generated from loaded results</div></div>
-  <div id="findings-content"><div class="loader-wrap"><p style="color:var(--muted)">Load results folder first</p></div></div>
+<!-- ═══ DEFENSE PAGE ═══ -->
+<div id="page-defense" class="page">
+  <div class="run-panel" style="margin-bottom:1rem">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary" id="def-run-btn" onclick="startDefenseRun()">Run Defense Evaluation</button>
+      <span id="def-run-label" style="font-size:12px;color:var(--muted)">Scans all 55 payloads + 12 benign controls with the layered defense engine (block mode) and refreshes the results below.</span>
+    </div>
+  </div>
+  <div id="def-terminal" class="terminal" style="height:220px;display:none;margin-bottom:1rem"></div>
+  <div id="defense-content">
+    <div class="empty"><h3>Defense data unavailable</h3><p>Start the server and click Refresh — or click "Run Defense Evaluation" above.</p></div>
+  </div>
+  <div class="card" style="margin-top:1rem">
+    <div class="card-title">Test any input — run the defense engine on it</div>
+    <div style="display:flex;gap:8px;margin-bottom:.5rem;flex-wrap:wrap;align-items:center">
+      <select class="filter-sel" id="scan-mode">
+        <option value="block">block mode</option>
+        <option value="sanitize">sanitize mode</option>
+        <option value="alert">alert mode</option>
+      </select>
+      <select class="filter-sel" id="scan-tier">
+        <option value="">no tier</option>
+        <option value="1">tier 1</option><option value="2">tier 2</option>
+        <option value="3">tier 3</option><option value="4">tier 4</option>
+      </select>
+      <button class="btn btn-primary btn-sm" onclick="defScan()">Scan input</button>
+      <span style="font-size:11px;color:var(--dim)">Try a payload with an [INST: ...] block, or any text you want checked.</span>
+    </div>
+    <textarea id="scan-text" placeholder="Paste a payload or any text here..." style="width:100%;min-height:72px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:12px;padding:8px;box-sizing:border-box"></textarea>
+    <div id="scan-result" style="margin-top:.6rem;font-size:13px"></div>
+  </div>
 </div>
 
-</main>
+<!-- ═══ API KEYS PAGE ═══ -->
+<div id="page-keys" class="page">
+  <div class="card" style="margin-bottom:1rem">
+    <div class="card-title">API Keys</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:1rem">Keys are stored in memory for this server session only — they are never saved to disk. Add them to a <code style="color:var(--accent)">.env</code> file in your project folder for persistence.</p>
+    <div class="key-grid" id="key-grid">
+      <div class="empty"><h3 style="font-size:14px">Loading…</h3></div>
+    </div>
+    <div style="margin-top:1rem;display:flex;gap:8px">
+      <button class="btn btn-primary" onclick="saveKeys()">Save keys for this session</button>
+      <button class="btn btn-ghost" onclick="loadKeys()">Refresh status</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Where to get API keys</div>
+    <table class="tbl">
+      <thead><tr><th>Provider</th><th>URL</th><th>Free tier</th></tr></thead>
+      <tbody>
+        <tr><td>Groq</td><td><a href="https://console.groq.com" target="_blank" style="color:var(--accent)">console.groq.com</a></td><td style="color:var(--green)">Yes</td></tr>
+        <tr><td>OpenRouter</td><td><a href="https://openrouter.ai/keys" target="_blank" style="color:var(--accent)">openrouter.ai/keys</a></td><td style="color:var(--green)">Yes</td></tr>
+        <tr><td>Gemini</td><td><a href="https://aistudio.google.com" target="_blank" style="color:var(--accent)">aistudio.google.com</a></td><td style="color:var(--green)">Yes</td></tr>
+        <tr><td>DeepSeek</td><td><a href="https://platform.deepseek.com" target="_blank" style="color:var(--accent)">platform.deepseek.com</a></td><td style="color:var(--green)">$5 credit</td></tr>
+        <tr><td>Mistral</td><td><a href="https://console.mistral.ai" target="_blank" style="color:var(--accent)">console.mistral.ai</a></td><td style="color:var(--green)">Yes</td></tr>
+        <tr><td>Cohere</td><td><a href="https://dashboard.cohere.com" target="_blank" style="color:var(--accent)">dashboard.cohere.com</a></td><td style="color:var(--green)">Trial</td></tr>
+        <tr><td>Anthropic</td><td><a href="https://console.anthropic.com" target="_blank" style="color:var(--accent)">console.anthropic.com</a></td><td style="color:var(--muted)">Paid</td></tr>
+        <tr><td>OpenAI</td><td><a href="https://platform.openai.com" target="_blank" style="color:var(--accent)">platform.openai.com</a></td><td style="color:var(--muted)">Paid</td></tr>
+      </tbody>
+    </table>
+  </div>
 </div>
+
+</div><!-- /main -->
+</div><!-- /body -->
+</div><!-- /app -->
 
 <script>
-// ─── state ────────────────────────────────────────────────────
-let folderHandle = null;
-let DATA = {};           // modelKey → modelData
-let activeModel = null;
-let refreshTimer = null;
-let charts = {};
+const API = 'http://localhost:5000/api';
+let selectedModel = null;
+let activeRunKey  = null;
+let activeRunEs   = null;
+let allResults    = {};   // modelKey → rows[]
+let charts        = {};
+let refreshTimer  = null;
 
-const TIER_LABELS = {1:'Direct injection',2:'Persona hijacking',3:'Indirect injection',4:'Encoding/obfuscation'};
+// ── colour helpers ────────────────────────────────────────────
+const cr = r => r>=75?'#ef4444':r>=50?'#f97316':r>=25?'#eab308':'#22c55e';
+const grade = s => s>=90?'A':s>=75?'B':s>=60?'C':s>=40?'D':'F';
+const TIER_LABEL = {1:'Direct injection',2:'Persona hijacking',3:'Indirect injection',4:'Encoding / obfuscation'};
+const COLORS = ['#3b82f6','#ef4444','#22c55e','#f59e0b','#8b5cf6','#ec4899'];
 
-// ─── CSV parser ───────────────────────────────────────────────
-function parseCSV(text) {
-  const lines = text.trim().split(/\r?\n/);
-  if (lines.length < 2) return [];
-  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g,''));
-  return lines.slice(1).map(line => {
-    // handle quoted fields with commas
-    const cols = [];
-    let cur = '', inQ = false;
-    for (let c of line) {
-      if (c === '"') { inQ = !inQ; continue; }
-      if (c === ',' && !inQ) { cols.push(cur); cur = ''; continue; }
-      cur += c;
-    }
-    cols.push(cur);
-    const row = {};
-    headers.forEach((h, i) => row[h] = (cols[i] || '').trim());
-    return row;
-  });
+// ── server health ─────────────────────────────────────────────
+async function checkServer() {
+  try {
+    const r = await fetch(`${API}/env`, {signal: AbortSignal.timeout(2000)});
+    if (r.ok) { setServerStatus('ok'); return true; }
+  } catch {}
+  setServerStatus('err');
+  return false;
 }
 
-// ─── extract model name from run_id ──────────────────────────
-function modelFromRunId(runId) {
-  // run_id format: YYYYMMDD_HHMMSS_modelkey
-  // e.g. 20260705_183704_groq-llama
-  const parts = runId.split('_');
-  if (parts.length >= 3) return parts.slice(2).join('_');
-  return runId;
-}
+function setServerStatus(s) {
+  const dot  = document.getElementById('srv-dot');
+  const dotS = document.getElementById('srv-dot-sm');
+  const txt  = document.getElementById('srv-status');
+  const txtS = document.getElementById('srv-status-sm');
+  const tag  = document.getElementById('srv-tag');
+  tag.style.display = 'inline-flex';
 
-function friendlyName(key) {
-  const names = {
-    'groq-llama'  : 'Llama 3.3 70B',
-    'nemotron'    : 'Nemotron Ultra 550B',
-    'or-free-nvidia':'Nemotron Ultra 550B',
-    'claude'      : 'Claude Sonnet',
-    'claude-opus' : 'Claude Opus',
-    'claude-haiku': 'Claude Haiku',
-    'gemini'      : 'Gemini 2.0 Flash',
-    'gemini-pro'  : 'Gemini 2.5 Pro',
-    'gpt4o'       : 'GPT-4o',
-    'gpt4o-mini'  : 'GPT-4o mini',
-    'deepseek'    : 'DeepSeek V4 Pro',
-    'deepseek-r1' : 'DeepSeek R1',
-    'qwen3'       : 'Qwen3 Max',
-    'glm5'        : 'GLM 5.2',
-    'o3'          : 'OpenAI o3',
-    'o4-mini'     : 'OpenAI o4-mini',
-    'groq-mixtral': 'Mixtral 8x7B',
-    'groq-gemma'  : 'Gemma 2 9B',
-    'mistral'     : 'Mistral Large',
-    'cohere'      : 'Cohere Command R+',
+  const states = {
+    ok : { cls:'srv-ok',   text:'Server connected' },
+    err: { cls:'srv-err',  text:'Server offline — run: python server.py' },
+    spin:{ cls:'srv-spin', text:'Connecting…' }
   };
-  for (const [k,v] of Object.entries(names)) {
-    if (key.includes(k)) return v;
+  const st = states[s] || states.spin;
+  [dot, dotS].forEach(d => { d.className = 'srv-dot ' + st.cls; });
+  [txt, txtS].forEach(t => { t.textContent = st.text; });
+  if (s === 'err') {
+    [txt, txtS].forEach(t => t.style.color = '#ef4444');
+  } else {
+    [txt, txtS].forEach(t => t.style.color = '');
   }
-  return key.replace(/-/g,' ').replace(/\b\w/g, c=>c.toUpperCase());
 }
 
-// ─── build model stats from flat row array ────────────────────
-function buildStats(rows, modelKey) {
+// ── navigation ────────────────────────────────────────────────
+const PAGE_META = {
+  models:   ['Models', '67 model aliases across 11 providers'],
+  run:      ['Run Attack', 'Configure and launch an attack'],
+  overview: ['Overview', 'Vulnerability summary'],
+  tiers:    ['Tier Analysis', 'Breakdown by attack technique'],
+  compare:  ['Model Comparison', 'Side-by-side model results'],
+  payloads: ['Payload Log', 'All attack results'],
+  defense:  ['Defense Engine', 'Layered defense evaluated on the same corpus'],
+  keys:     ['API Keys', 'Manage provider credentials'],
+};
+
+function nav(page, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  if (btn) btn.classList.add('active');
+  const [title, sub] = PAGE_META[page] || ['PromptShield',''];
+  document.getElementById('topbar-title').textContent = title;
+  document.getElementById('topbar-sub').textContent   = sub;
+
+  if (page === 'overview') renderOverview();
+  if (page === 'tiers')    renderTiers();
+  if (page === 'compare')  renderCompare();
+  if (page === 'payloads') renderPayloads();
+  if (page === 'defense')  renderDefense();
+}
+
+// ── models page ───────────────────────────────────────────────
+async function loadModels() {
+  const ok = await checkServer();
+  if (!ok) {
+    document.getElementById('models-content').innerHTML = `
+      <div class="empty">
+        <h3>Server not running</h3>
+        <p>Start the local server to use the dashboard:</p>
+        <code style="background:var(--s2);padding:.5rem 1rem;border-radius:var(--r);color:var(--accent);font-family:var(--mono);font-size:13px">python server.py</code>
+        <p style="margin-top:.5rem">Then open <strong>http://localhost:5000</strong> in your browser</p>
+        <button class="btn btn-primary" onclick="loadModels()" style="margin-top:.5rem">Try again</button>
+      </div>`;
+    return;
+  }
+
+  const [modRes, envRes] = await Promise.all([
+    fetch(`${API}/models`).then(r=>r.json()).catch(()=>({})),
+    fetch(`${API}/env`).then(r=>r.json()).catch(()=>({}))
+  ]);
+
+  const providers  = modRes.providers || [];
+  const available  = modRes.available || 0;
+  document.getElementById('nav-available').textContent = available + ' ready';
+
+  let html = '';
+  for (const prov of providers) {
+    const hasFree = prov.models.some(m => m.free);
+    html += `<div class="provider-section">
+      <div class="provider-header">
+        <div class="provider-name">${prov.name}</div>
+        ${hasFree ? '<span class="provider-badge pb-free">Free tier</span>' : ''}
+        ${!prov.key_set && prov.key !== 'none' ? `<span class="provider-badge pb-paid" style="color:#ef4444;background:rgba(239,68,68,.1)">Key needed</span>` : ''}
+      </div>
+      <div class="model-grid">`;
+    for (const m of prov.models) {
+      const locked   = !m.key_set;
+      const selected = selectedModel === m.alias;
+      html += `<div class="model-card ${locked?'locked':''} ${selected?'selected':''}"
+        onclick="${locked ? '' : `selectModel('${m.alias}','${m.model}','${m.provider}')`}"
+        title="${locked ? 'Set '+m.env_key+' to enable' : m.model}">
+        <div class="mc-alias">${m.alias}</div>
+        <div class="mc-model">${m.model}</div>
+        <div class="mc-rpm">${m.rpm} RPM · ${m.delay}s delay</div>
+        ${m.free   ? '<div class="mc-free">FREE</div>' : ''}
+        ${locked   ? '<div class="mc-lock">locked</div>'  : ''}
+      </div>`;
+    }
+    html += `</div></div>`;
+  }
+  document.getElementById('models-content').innerHTML = html || '<div class="empty"><h3>No models found</h3></div>';
+}
+
+function selectModel(alias, modelName, provider) {
+  selectedModel = alias;
+  // update cards
+  document.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+  // update run page
+  document.getElementById('sel-model-name').textContent = alias + ' (' + modelName + ')';
+  document.getElementById('sel-bar-wrap').style.display = 'flex';
+  document.getElementById('run-btn').disabled = false;
+  // go to run page
+  const runBtn = document.querySelector('.nav-item[onclick*="run"]');
+  nav('run', runBtn);
+  term(`Selected model: ${alias}  (${provider} · ${modelName})`,'t-header');
+}
+
+// ── tier checks ───────────────────────────────────────────────
+function toggleTier(cb) {
+  const lbl = cb.closest('.tier-check');
+  lbl.classList.toggle('checked', cb.checked);
+}
+
+function selectedTiers() {
+  return [...document.querySelectorAll('.tier-check input:checked')].map(c => parseInt(c.value));
+}
+
+// ── terminal helpers ──────────────────────────────────────────
+function term(text, cls='t-line') {
+  const el  = document.getElementById('terminal');
+  const div = document.createElement('div');
+  div.className = 't-line ' + cls;
+  div.textContent = text;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+function termLine(raw) {
+  const l = raw.trim();
+  if (!l) return;
+  let cls = 't-line';
+  if (l.includes('SUCCESS') )    cls = 't-bypass';
+  else if (l.includes('BLOCKED') ) cls = 't-block';
+  else if (l.includes('ERROR')  ) cls = 't-warn';
+  else if (l.includes('===') || l.includes('---'))   cls = 't-header';
+  else if (l.startsWith('  '))                        cls = 't-info';
+  term(l, cls);
+}
+
+function clearTerminal() {
+  document.getElementById('terminal').innerHTML = '';
+}
+
+// ── run attack ────────────────────────────────────────────────
+async function startRun(dryRun=false) {
+  if (!selectedModel) {
+    term('No model selected — go to Models and pick one.', 't-warn'); return;
+  }
+  const tiers = selectedTiers();
+  const defense = (document.getElementById('defense-mode') || {}).value || 'off';
+
+  clearTerminal();
+  term('Defense layer: ' + (defense === 'off' ? 'OFF (baseline attack)' : defense.toUpperCase()), 't-info');
+  term(`Starting attack: ${selectedModel}${tiers.length?' · Tiers '+tiers.join(','):' · All tiers'}${dryRun?' · DRY RUN':''}`, 't-header');
+  term('');
+
+  document.getElementById('run-btn').disabled  = true;
+  document.getElementById('stop-btn').style.display = 'inline-flex';
+  document.getElementById('run-status-label').textContent = 'Running…';
+
+  try {
+    const res  = await fetch(`${API}/run`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({model: selectedModel, tiers, dry_run: dryRun, defense})
+    });
+    const data = await res.json();
+    activeRunKey = data.run_key;
+
+    // SSE stream
+    if (activeRunEs) activeRunEs.close();
+    // Open SSE stream immediately after run starts
+    if (activeRunEs) activeRunEs.close();
+    activeRunEs = new EventSource(`${API}/run/${activeRunKey}/stream`);
+
+    activeRunEs.onmessage = e => {
+      try {
+        const d = JSON.parse(e.data);
+        if (d.heartbeat) return;                                    // skip keepalive pings
+        if (d.error) { term('Stream error: ' + d.error, 't-warn'); return; }
+        if (d.line !== undefined) termLine(d.line);
+        if (d.done) {
+          activeRunEs.close();
+          activeRunEs = null;
+          document.getElementById('run-btn').disabled = false;
+          document.getElementById('stop-btn').style.display = 'none';
+          const lbl = d.status === 'done' ? 'Done' : d.status.charAt(0).toUpperCase() + d.status.slice(1);
+          document.getElementById('run-status-label').textContent = lbl;
+          term('');
+          term('Run finished — refreshing results…', 't-done');
+          setTimeout(() => { loadResults(); renderOverview(); }, 1500);
+        }
+      } catch(err) { console.warn('SSE parse error', err); }
+    };
+
+    activeRunEs.onerror = (e) => {
+      // SSE closes naturally when stream ends — only warn if still "running"
+      const run = activeRunKey;
+      setTimeout(async () => {
+        if (!run) return;
+        const res = await fetch(`${API}/run/${run}`).catch(()=>null);
+        if (!res) return;
+        const data = await res.json().catch(()=>({}));
+        if (data.status === 'done' || data.status === 'error' || data.status === 'stopped') {
+          document.getElementById('run-btn').disabled = false;
+          document.getElementById('stop-btn').style.display = 'none';
+          document.getElementById('run-status-label').textContent =
+            data.status === 'done' ? 'Done' : data.status.charAt(0).toUpperCase() + data.status.slice(1);
+          // show any remaining output we might have missed
+          if (data.output) data.output.slice(-10).forEach(l => termLine(l));
+          term('Run finished — refreshing results…', 't-done');
+          setTimeout(() => { loadResults(); renderOverview(); }, 1500);
+        }
+      }, 500);
+    };
+  } catch (e) {
+    term('Failed to start run: ' + e.message, 't-warn');
+    document.getElementById('run-btn').disabled = false;
+    document.getElementById('stop-btn').style.display = 'none';
+  }
+}
+
+async function stopRun() {
+  if (!activeRunKey) return;
+  await fetch(`${API}/run/${activeRunKey}/stop`, {method:'POST'}).catch(()=>{});
+  if (activeRunEs) activeRunEs.close();
+  document.getElementById('run-btn').disabled  = false;
+  document.getElementById('stop-btn').style.display = 'none';
+  document.getElementById('run-status-label').textContent = 'Stopped';
+  term('Run stopped by user.', 't-warn');
+}
+
+// ── load results ──────────────────────────────────────────────
+async function loadResults() {
+  try {
+    const res = await fetch(`${API}/results/all`);
+    if (!res.ok) return;
+    const raw = await res.json();
+    allResults = {};
+    for (const [model, rows] of Object.entries(raw)) {
+      allResults[model] = buildStats(rows, model);
+    }
+    // update sidebar with first model's stats
+    const models = Object.values(allResults);
+    if (models.length) {
+      const m = models.find(m=>m.key===selectedModel) || models[0];
+      document.getElementById('sb-score').textContent = m.score.toFixed(1);
+      document.getElementById('sb-score').style.color = cr(100-m.score);
+      document.getElementById('sb-rate').textContent  = m.rate.toFixed(1)+'%';
+      document.getElementById('sb-rate').style.color  = cr(m.rate);
+      document.getElementById('sb-model').textContent = m.key;
+    }
+    // update payload filter dropdown
+    const sel = document.getElementById('f-model');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">All models</option>' +
+      Object.keys(allResults).map(k=>`<option value="${k}" ${k===cur?'selected':''}>${k}</option>`).join('');
+  } catch(e) {
+    console.warn('Could not load results:', e.message);
+  }
+}
+
+// ── build stats from CSV rows ─────────────────────────────────
+function buildStats(rows, key) {
   const total    = rows.length;
-  const bypassed = rows.filter(r => r.success === '1').length;
-  const blocked  = total - bypassed;
+  const bypassed = rows.filter(r => r.success==='1').length;
   const rate     = total ? +(bypassed/total*100).toFixed(1) : 0;
   const score    = +(100-rate).toFixed(1);
 
-  // tiers — infer from payload_id prefix (T1-, T2-, T3-, T4-)
   const tierOf = r => {
     const m = (r.payload_id||'').match(/^T(\d)-/);
-    return m ? parseInt(m[1]) : (parseInt(r.tier)||0);
+    return m ? +m[1] : (+r.tier||0);
   };
 
   const tiers = {};
-  for (let t=1; t<=4; t++) {
-    const tr = rows.filter(r => tierOf(r) === t);
-    const tb = tr.filter(r => r.success === '1').length;
-    const lats = tr.map(r => parseInt(r.latency_ms)||0).filter(v=>v>0);
-    tiers[t] = {
-      total: tr.length, bypassed: tb,
-      rate: tr.length ? +(tb/tr.length*100).toFixed(1) : 0,
-      avg_lat: lats.length ? Math.round(lats.reduce((a,b)=>a+b,0)/lats.length) : 0,
-      label: TIER_LABELS[t]
-    };
+  for (let t=1;t<=4;t++) {
+    const tr = rows.filter(r=>tierOf(r)===t);
+    const tb = tr.filter(r=>r.success==='1').length;
+    const lats = tr.map(r=>+r.latency_ms||0).filter(v=>v>0);
+    tiers[t] = { total:tr.length, bypassed:tb,
+      rate: tr.length?+(tb/tr.length*100).toFixed(1):0,
+      avg_lat: lats.length?Math.round(lats.reduce((a,b)=>a+b,0)/lats.length):0,
+      label: TIER_LABEL[t] };
   }
 
-  // severities
-  const sevs = {};
-  for (const sev of ['critical','high','medium','low']) {
-    const sr = rows.filter(r => r.severity === sev);
-    const sb = sr.filter(r => r.success === '1').length;
-    sevs[sev] = { total:sr.length, bypassed:sb, rate:sr.length ? +(sb/sr.length*100).toFixed(1):0 };
-  }
-
-  // categories
-  const catMap = {};
+  const sevs={}, cats={};
   rows.forEach(r => {
-    const c = r.category || 'unknown';
-    if (!catMap[c]) catMap[c] = { total:0, bypassed:0 };
-    catMap[c].total++;
-    if (r.success === '1') catMap[c].bypassed++;
+    const s=r.severity, c=r.category;
+    if (!sevs[s]) sevs[s]={total:0,bypassed:0};
+    if (!cats[c]) cats[c]={total:0,bypassed:0};
+    sevs[s].total++; cats[c].total++;
+    if (r.success==='1'){sevs[s].bypassed++;cats[c].bypassed++;}
   });
-  const categories = {};
-  for (const [c,v] of Object.entries(catMap)) {
-    categories[c] = { ...v, rate: v.total ? +(v.bypassed/v.total*100).toFixed(1):0 };
-  }
+  for(const v of [...Object.values(sevs),...Object.values(cats)])
+    v.rate = v.total?+(v.bypassed/v.total*100).toFixed(1):0;
 
-  // avg latency overall
-  const allLats = rows.map(r=>parseInt(r.latency_ms)||0).filter(v=>v>0);
-  const avgLat  = allLats.length ? Math.round(allLats.reduce((a,b)=>a+b,0)/allLats.length) : 0;
+  const allLats = rows.map(r=>+r.latency_ms||0).filter(v=>v>0);
+  const avgLat  = allLats.length?Math.round(allLats.reduce((a,b)=>a+b,0)/allLats.length):0;
 
-  return {
-    key: modelKey,
-    name: friendlyName(modelKey),
-    total, bypassed, blocked, rate, score, avgLat,
-    tiers, severities: sevs, categories,
-    payloads: rows.map(r => ({
-      id:     r.payload_id,
-      run:    r.run_id || '',
-      tier:   tierOf(r),
-      cat:    r.category || '',
-      goal:   r.goal || '',
-      sev:    r.severity || '',
-      success: r.success === '1' ? 1 : 0,
-      signal: r.matched_signal || '',
-      lat:    parseInt(r.latency_ms)||0,
-      error:  r.error || ''
-    }))
-  };
+  return { key, total, bypassed, blocked:total-bypassed, rate, score, avgLat,
+    tiers, severities:sevs, categories:cats, rows };
 }
 
-// ─── read CSV files from folder handle ───────────────────────
-async function readFolder(handle) {
-  setStatus('loading', 'Reading CSV files…');
-  const filesByModel = {};
-
-  for await (const entry of handle.values()) {
-    if (entry.kind !== 'file') continue;
-    const name = entry.name;
-    if (!name.endsWith('.csv') || !name.startsWith('report_')) continue;
-
-    // filename: report_YYYYMMDD_HHMMSS_modelkey.csv
-    const base   = name.replace(/^report_/, '').replace(/\.csv$/, '');
-    const parts  = base.split('_');
-    // modelkey starts after YYYYMMDD_HHMMSS (2 parts)
-    const modelKey = parts.slice(2).join('_') || 'unknown';
-
-    const file = await entry.getFile();
-    const text = await file.text();
-    const rows = parseCSV(text);
-    if (!rows.length) continue;
-
-    if (!filesByModel[modelKey]) filesByModel[modelKey] = [];
-    filesByModel[modelKey].push(...rows);
-  }
-
-  if (!Object.keys(filesByModel).length) {
-    setStatus('error', 'No report_*.csv files found in this folder');
-    return false;
-  }
-
-  // rebuild DATA
-  DATA = {};
-  for (const [key, rows] of Object.entries(filesByModel)) {
-    DATA[key] = buildStats(rows, key);
-  }
-
-  // set activeModel to first if not already valid
-  const keys = Object.keys(DATA);
-  if (!DATA[activeModel]) activeModel = keys[0];
-
-  renderModelTabs();
-  renderAll();
-  setStatus('ok', `Loaded ${keys.length} model(s), ${Object.values(DATA).reduce((a,d)=>a+d.total,0)} total results`);
-  document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
-  return true;
-}
-
-// ─── open folder picker ───────────────────────────────────────
-async function openFolder() {
-  if (!window.showDirectoryPicker) {
-    alert('Your browser does not support the File System Access API.\nPlease use Chrome or Edge 86+.');
-    return;
-  }
-  try {
-    folderHandle = await window.showDirectoryPicker({ mode: 'read' });
-    await readFolder(folderHandle);
-    // auto-refresh every 30s
-    clearInterval(refreshTimer);
-    refreshTimer = setInterval(refreshAll, 30000);
-  } catch (e) {
-    if (e.name !== 'AbortError') {
-      setStatus('error', 'Failed to read folder: ' + e.message);
-    }
-  }
-}
-
-async function refreshAll() {
-  if (!folderHandle) return;
-  setStatus('loading', 'Refreshing…');
-  await readFolder(folderHandle);
-}
-
-// ─── status bar helpers ───────────────────────────────────────
-function setStatus(state, msg) {
-  const dot  = document.getElementById('status-dot');
-  const text = document.getElementById('status-text');
-  dot.className = 'status-dot-sm' + (state==='loading'?' loading': state==='error'?' error':'');
-  text.textContent = msg;
-}
-
-// ─── model tabs ───────────────────────────────────────────────
-function renderModelTabs() {
-  const wrap = document.getElementById('model-tabs');
-  wrap.innerHTML = Object.values(DATA).map(d =>
-    `<button class="model-tab ${d.key===activeModel?'active':''}"
-       onclick="selectModel('${d.key}',this)">${d.name}</button>`
-  ).join('') +
-  `<button class="btn-ghost" style="margin-left:auto;font-size:12px;padding:5px 12px" onclick="openFolder()">📂 Change folder</button>
-   <button class="btn-ghost" style="font-size:12px;padding:5px 12px" onclick="refreshAll()">🔄 Refresh</button>`;
-}
-
-function selectModel(key, btn) {
-  activeModel = key;
-  document.querySelectorAll('.model-tab').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  renderAll();
-}
-
-// ─── page navigation ──────────────────────────────────────────
-function showPage(id, btn) {
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
-  document.getElementById('page-'+id).classList.add('active');
-  if (btn) btn.classList.add('active');
-  if (id==='payloads') renderPayloads();
-  if (id==='tiers')    renderTiers();
-  if (id==='compare')  renderCompare();
-  if (id==='findings') renderFindings();
-}
-
-// ─── helpers ──────────────────────────────────────────────────
-function colorForRate(r) {
-  if (r>=75) return '#e24b4a';
-  if (r>=50) return '#ec835a';
-  if (r>=25) return '#eda100';
-  return '#1baf7a';
-}
-function grade(s) {
-  if (s>=90) return 'A'; if (s>=75) return 'B';
-  if (s>=60) return 'C'; if (s>=40) return 'D'; return 'F';
-}
-function destroyChart(id) {
-  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
-}
-function fmt(n) { return Number.isInteger(n) ? n : n.toFixed(1); }
-
-// ─── OVERVIEW ─────────────────────────────────────────────────
+// ── overview ──────────────────────────────────────────────────
 function renderOverview() {
-  const d = DATA[activeModel];
-  if (!d) return;
+  const models = Object.values(allResults);
+  if (!models.length) return;
 
-  // sidebar
-  document.getElementById('sb-model').textContent = d.name;
-  document.getElementById('sb-info').textContent  = `${d.total} payloads · ${Object.keys(DATA).length} model(s)`;
-  document.getElementById('sb-score').textContent = fmt(d.score);
-  document.getElementById('sb-score').style.color = colorForRate(100-d.score);
-  document.getElementById('sb-bypass').textContent = fmt(d.rate)+'%';
-  document.getElementById('sb-bypass').style.color = colorForRate(d.rate);
+  const cur = allResults[selectedModel] || models[0];
+  const crit = cur.severities.critical || {total:0,bypassed:0,rate:0};
 
-  document.getElementById('ov-sub').textContent = `${d.total} payloads · ${Object.values(d.tiers).filter(t=>t.total>0).length} tiers · ${d.name}`;
+  const ringC   = 301.6;
+  const ringOff = +(ringC*(1-cur.score/100)).toFixed(1);
 
-  const crit = d.severities.critical || {total:0,bypassed:0,rate:0};
   document.getElementById('overview-content').innerHTML = `
-  <div class="kpi-row">
+  <div class="kpi-grid">
     <div class="kpi"><div class="kpi-label">Bypass rate</div>
-      <div class="kpi-value" style="color:${colorForRate(d.rate)}">${fmt(d.rate)}%</div>
-      <div class="kpi-sub">${d.bypassed} / ${d.total} payloads</div></div>
+      <div class="kpi-value" style="color:${cr(cur.rate)}">${cur.rate.toFixed(1)}%</div>
+      <div class="kpi-sub">${cur.bypassed}/${cur.total} payloads · ${cur.key}</div></div>
     <div class="kpi"><div class="kpi-label">Security score</div>
-      <div class="kpi-value" style="color:${colorForRate(100-d.score)}">${fmt(d.score)}</div>
-      <div class="kpi-sub">out of 100</div></div>
+      <div class="kpi-value" style="color:${cr(100-cur.score)}">${cur.score.toFixed(1)}</div>
+      <div class="kpi-sub">Grade: ${grade(cur.score)} · out of 100</div></div>
     <div class="kpi"><div class="kpi-label">Critical bypassed</div>
-      <div class="kpi-value" style="color:${colorForRate(crit.rate)}">${crit.bypassed}/${crit.total}</div>
-      <div class="kpi-sub">${fmt(crit.rate)}% critical bypass rate</div></div>
+      <div class="kpi-value" style="color:${cr(crit.rate)}">${crit.bypassed}/${crit.total}</div>
+      <div class="kpi-sub">${crit.rate.toFixed(0)}% critical bypass rate</div></div>
     <div class="kpi"><div class="kpi-label">Avg latency</div>
-      <div class="kpi-value">${d.avgLat.toLocaleString()}ms</div>
+      <div class="kpi-value">${cur.avgLat.toLocaleString()}ms</div>
       <div class="kpi-sub">per request</div></div>
   </div>
-  <div class="grid-score">
-    <div class="score-ring-wrap">
-      <div class="score-ring">
-        <svg viewBox="0 0 110 110">
-          <circle cx="55" cy="55" r="48" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="8"/>
-          <circle cx="55" cy="55" r="48" fill="none" stroke="${colorForRate(100-d.score)}"
-            stroke-width="8" stroke-dasharray="301.6"
-            stroke-dashoffset="${(301.6*(1-d.score/100)).toFixed(1)}" stroke-linecap="round"/>
-        </svg>
-        <div class="score-center">
-          <div class="score-num" style="color:${colorForRate(100-d.score)}">${fmt(d.score)}</div>
-          <div class="score-label">SECURITY</div>
+  <div class="g2" style="grid-template-columns:160px 1fr">
+    <div class="card" style="display:flex;align-items:center;justify-content:center">
+      <div class="ring-wrap">
+        <div class="ring">
+          <svg viewBox="0 0 100 100">
+            <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="7"/>
+            <circle cx="50" cy="50" r="44" fill="none" stroke="${cr(100-cur.score)}"
+              stroke-width="7" stroke-dasharray="${ringC}" stroke-dashoffset="${ringOff}" stroke-linecap="round"/>
+          </svg>
+          <div class="ring-center">
+            <div class="ring-num" style="color:${cr(100-cur.score)}">${cur.score.toFixed(0)}</div>
+            <div class="ring-lbl">SCORE</div>
+          </div>
+        </div>
+        <div style="text-align:center;font-size:11px;color:var(--muted)">
+          <div style="font-size:18px;font-weight:700;color:${cr(100-cur.score)}">${grade(cur.score)}</div>Grade
         </div>
       </div>
-      <div style="font-size:11px;color:var(--muted);text-align:center">
-        <div style="font-size:20px;font-weight:700;color:${colorForRate(100-d.score)}">${grade(d.score)}</div>Grade
-      </div>
     </div>
-    <div class="card">
-      <div class="card-title">Severity breakdown</div>
-      <div class="cat-list">${renderSevBars(d)}</div>
+    <div class="card"><div class="card-title">Severity breakdown</div>
+      ${['critical','high','medium','low'].filter(s=>cur.severities[s]?.total).map(s=>{
+        const v=cur.severities[s];
+        return `<div class="hbar-row">
+          <div class="hbar-label">${s.charAt(0).toUpperCase()+s.slice(1)}</div>
+          <div class="hbar-track"><div class="hbar-fill" style="width:${v.rate}%;background:${cr(v.rate)}">${v.bypassed}/${v.total}</div></div>
+          <div class="hbar-pct">${v.rate.toFixed(0)}%</div></div>`;}).join('')}
     </div>
   </div>
-  <div class="grid-2">
-    <div class="card">
-      <div class="card-title">Bypass rate by tier</div>
-      <div class="tier-list">${renderTierBars(d)}</div>
+  <div class="g2">
+    <div class="card"><div class="card-title">Tier bypass rates</div>
+      ${[1,2,3,4].filter(t=>cur.tiers[t]?.total).map(t=>{
+        const tier=cur.tiers[t]; const c=cr(tier.rate);
+        return `<div style="margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+            <span>Tier ${t} — ${tier.label}</span>
+            <span style="color:var(--muted)">${tier.bypassed}/${tier.total} · ${tier.avg_lat.toLocaleString()}ms</span>
+          </div>
+          <div style="height:5px;background:var(--s3);border-radius:3px;overflow:hidden">
+            <div style="width:${tier.rate}%;height:100%;background:${c};border-radius:3px"></div>
+          </div></div>`;}).join('')}
     </div>
     <div class="card">
       <div class="card-title">Bypass rate across tiers</div>
-      <div style="position:relative;height:200px"><canvas id="tierChart" role="img" aria-label="Line chart of bypass rate across attack tiers"></canvas></div>
+      <div style="position:relative;height:180px">
+        <canvas id="ov-chart" role="img" aria-label="Line chart of bypass rate per tier"></canvas>
+      </div>
     </div>
   </div>`;
 
-  destroyChart('tierChart');
-  const tierNums = [1,2,3,4].filter(t=>d.tiers[t]&&d.tiers[t].total>0);
-  const tierRates= tierNums.map(t=>d.tiers[t].rate);
-  charts['tierChart'] = new Chart(document.getElementById('tierChart'),{
+  destroyChart('ov-chart');
+  const tNums  = [1,2,3,4].filter(t=>cur.tiers[t]?.total);
+  const tRates = tNums.map(t=>cur.tiers[t].rate);
+  charts['ov-chart'] = new Chart(document.getElementById('ov-chart'),{
     type:'line',
-    data:{
-      labels: tierNums.map(t=>'T'+t+' '+TIER_LABELS[t].split(' ')[0]),
-      datasets:[{label:'Bypass %',data:tierRates,borderColor:'#4f8ef7',
-        backgroundColor:'rgba(79,142,247,.1)',borderWidth:2,
-        pointBackgroundColor:tierRates.map(r=>colorForRate(r)),
-        pointBorderColor:tierRates.map(r=>colorForRate(r)),
-        pointRadius:6,fill:true,tension:0.3}]
-    },
+    data:{labels:tNums.map(t=>'T'+t),
+      datasets:[{data:tRates,borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,.08)',
+        borderWidth:2,pointBackgroundColor:tRates.map(r=>cr(r)),
+        pointBorderColor:tRates.map(r=>cr(r)),pointRadius:5,fill:true,tension:.3}]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false}},
-      scales:{y:{min:0,max:100,ticks:{color:'#7a7f8e',callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.05)'}},
-              x:{ticks:{color:'#7a7f8e'},grid:{display:false}}}}
-  });
+      scales:{y:{min:0,max:100,ticks:{color:'#6b7385',callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.04)'}},
+              x:{ticks:{color:'#6b7385'},grid:{display:false}}}}});
 }
 
-function renderSevBars(d) {
-  return ['critical','high','medium','low'].map(s => {
-    const v = d.severities[s] || {total:0,bypassed:0,rate:0};
-    if (!v.total) return '';
-    const c = colorForRate(v.rate);
-    return `<div class="cat-row">
-      <div class="cat-label">${s.charAt(0).toUpperCase()+s.slice(1)}</div>
-      <div class="cat-track"><div class="cat-fill" style="width:${v.rate}%;background:${c}">${v.bypassed}/${v.total}</div></div>
-      <div class="cat-pct">${fmt(v.rate)}%</div>
-    </div>`;
-  }).join('');
-}
-
-function renderTierBars(d) {
-  return [1,2,3,4].filter(t=>d.tiers[t]&&d.tiers[t].total>0).map(t => {
-    const tier = d.tiers[t];
-    const c = colorForRate(tier.rate);
-    return `<div>
-      <div class="tier-header">
-        <div class="tier-name">Tier ${t} — ${tier.label}</div>
-        <div class="tier-meta">${tier.bypassed}/${tier.total} · ${tier.avg_lat.toLocaleString()}ms</div>
-      </div>
-      <div class="tier-track"><div class="tier-fill" style="width:${tier.rate}%;background:${c}"></div></div>
-    </div>`;
-  }).join('');
-}
-
-// ─── TIER ANALYSIS ────────────────────────────────────────────
+// ── tier analysis ─────────────────────────────────────────────
 function renderTiers() {
-  const d = DATA[activeModel];
-  if (!d) return;
-  const sorted = Object.entries(d.categories).sort((a,b)=>b[1].rate-a[1].rate);
+  const models = Object.values(allResults);
+  if (!models.length) { document.getElementById('tiers-content').innerHTML='<div class="empty"><h3>No results yet</h3></div>'; return; }
+  const cur = allResults[selectedModel] || models[0];
+  const sorted = Object.entries(cur.categories).sort((a,b)=>b[1].rate-a[1].rate);
 
   document.getElementById('tiers-content').innerHTML = `
-  <div class="grid-2">
-    <div class="card">
-      <div class="card-title">Category bypass rates</div>
-      <div class="cat-list">${sorted.map(([cat,v])=>{
-        const c=colorForRate(v.rate);
-        return `<div class="cat-row">
-          <div class="cat-label">${cat.replace(/_/g,' ')}</div>
-          <div class="cat-track"><div class="cat-fill" style="width:${v.rate}%;background:${c}">${v.bypassed}/${v.total}</div></div>
-          <div class="cat-pct">${fmt(v.rate)}%</div>
-        </div>`;}).join('')}
-      </div>
+  <div class="g2">
+    <div class="card"><div class="card-title">Category bypass rates — ${cur.key}</div>
+      ${sorted.map(([cat,v])=>`<div class="hbar-row">
+        <div class="hbar-label">${cat.replace(/_/g,' ')}</div>
+        <div class="hbar-track"><div class="hbar-fill" style="width:${v.rate}%;background:${cr(v.rate)}">${v.bypassed}/${v.total}</div></div>
+        <div class="hbar-pct">${v.rate.toFixed(0)}%</div></div>`).join('')}
     </div>
-    <div class="card">
-      <div class="card-title">Category chart</div>
-      <div style="position:relative;height:${Math.max(280,sorted.length*22+60)}px">
-        <canvas id="catChart" role="img" aria-label="Horizontal bar chart of bypass rates per category"></canvas>
+    <div class="card"><div class="card-title">Category chart</div>
+      <div style="position:relative;height:${Math.max(280,sorted.length*20+60)}px">
+        <canvas id="tier-chart" role="img" aria-label="Horizontal bar chart of category bypass rates"></canvas>
       </div>
     </div>
   </div>`;
 
-  destroyChart('catChart');
-  charts['catChart'] = new Chart(document.getElementById('catChart'),{
+  destroyChart('tier-chart');
+  charts['tier-chart'] = new Chart(document.getElementById('tier-chart'),{
     type:'bar',
-    data:{
-      labels:sorted.map(([k])=>k.replace(/_/g,' ')),
-      datasets:[{label:'Bypass %',data:sorted.map(([,v])=>v.rate),
-        backgroundColor:sorted.map(([,v])=>colorForRate(v.rate)+'cc'),borderRadius:3,borderSkipped:false}]
-    },
+    data:{labels:sorted.map(([k])=>k.replace(/_/g,' ')),
+      datasets:[{data:sorted.map(([,v])=>v.rate),
+        backgroundColor:sorted.map(([,v])=>cr(v.rate)+'bb'),borderRadius:3,borderSkipped:false}]},
     options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false}},
-      scales:{x:{min:0,max:100,ticks:{color:'#7a7f8e',callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.05)'}},
-              y:{ticks:{color:'#7a7f8e',font:{size:11}},grid:{display:false}}}}
-  });
+      scales:{x:{min:0,max:100,ticks:{color:'#6b7385',callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.04)'}},
+              y:{ticks:{color:'#6b7385',font:{size:11}},grid:{display:false}}}}});
 }
 
-// ─── COMPARE ──────────────────────────────────────────────────
+// ── compare ───────────────────────────────────────────────────
 function renderCompare() {
-  const models = Object.values(DATA);
+  const models = Object.values(allResults);
   if (models.length < 2) {
-    document.getElementById('compare-content').innerHTML =
-      '<div class="loader-wrap"><p>Load results from at least 2 models to compare</p></div>';
+    document.getElementById('compare-content').innerHTML=`<div class="empty"><h3>Need 2+ models</h3><p>Run attacks against at least two different models to compare them.</p></div>`;
     return;
   }
+  const sortedM = [...models].sort((a,b)=>a.rate-b.rate);
+  const best=sortedM[0], worst=sortedM[sortedM.length-1];
 
-  const COLORS = ['#e24b4a','#4f8ef7','#1baf7a','#eda100','#7c4dff','#ec835a'];
-  const tiers = [1,2,3,4];
-
-  // KPI row: best and worst
-  const sorted = [...models].sort((a,b)=>a.rate-b.rate);
-  const best = sorted[0], worst = sorted[sorted.length-1];
-  const diff = +(worst.rate - best.rate).toFixed(1);
-
-  document.getElementById('cmp-sub').textContent = `${models.length} models · ${models.reduce((a,m)=>a+m.total,0)} total results`;
   document.getElementById('compare-content').innerHTML = `
-  <div class="kpi-row">
+  <div class="kpi-grid">
     <div class="kpi"><div class="kpi-label">Most resistant</div>
-      <div class="kpi-value" style="color:#1baf7a;font-size:16px">${best.name}</div>
-      <div class="kpi-sub">${fmt(best.rate)}% bypass rate</div></div>
+      <div class="kpi-value" style="font-size:16px;color:var(--green)">${best.key}</div>
+      <div class="kpi-sub">${best.rate.toFixed(1)}% bypass rate</div></div>
     <div class="kpi"><div class="kpi-label">Most vulnerable</div>
-      <div class="kpi-value" style="color:#e24b4a;font-size:16px">${worst.name}</div>
-      <div class="kpi-sub">${fmt(worst.rate)}% bypass rate</div></div>
+      <div class="kpi-value" style="font-size:16px;color:var(--red)">${worst.key}</div>
+      <div class="kpi-sub">${worst.rate.toFixed(1)}% bypass rate</div></div>
     <div class="kpi"><div class="kpi-label">Rate spread</div>
-      <div class="kpi-value" style="color:var(--warning)">${fmt(diff)}pp</div>
+      <div class="kpi-value" style="color:var(--yellow)">${(worst.rate-best.rate).toFixed(1)}pp</div>
       <div class="kpi-sub">best vs worst</div></div>
-    <div class="kpi"><div class="kpi-label">Models tested</div>
-      <div class="kpi-value" style="color:var(--text)">${models.length}</div>
+    <div class="kpi"><div class="kpi-label">Models compared</div>
+      <div class="kpi-value">${models.length}</div>
       <div class="kpi-sub">${models.reduce((a,m)=>a+m.total,0)} total payloads</div></div>
   </div>
-  <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
-    ${models.map((m,i)=>`<span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)">
-      <span style="width:10px;height:10px;border-radius:2px;background:${COLORS[i%COLORS.length]};display:inline-block"></span>${m.name}</span>`).join('')}
-  </div>
-  <div class="card" style="margin-bottom:1.5rem">
-    <div class="card-title">Bypass rate by tier</div>
-    <div style="position:relative;height:260px"><canvas id="cmpChart" role="img" aria-label="Grouped bar chart comparing bypass rates per tier across models"></canvas></div>
-  </div>
-  <div class="card" style="margin-bottom:1.5rem">
+  <div class="card" style="margin-bottom:1.25rem">
     <div class="card-title">Overall bypass rate</div>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      ${[...models].sort((a,b)=>b.rate-a.rate).map(m=>{
-        const c=colorForRate(m.rate);
-        return `<div style="display:flex;align-items:center;gap:8px">
-          <div style="width:160px;font-size:12px;color:var(--muted);text-align:right;flex-shrink:0">${m.name}</div>
-          <div style="flex:1;height:18px;background:var(--border2);border-radius:4px;overflow:hidden">
-            <div style="width:${m.rate}%;height:100%;background:${c};border-radius:4px;display:flex;align-items:center;padding-left:6px;font-size:10px;font-weight:600;color:#fff">${fmt(m.rate)}%</div>
-          </div>
-          <div style="width:40px;font-size:11px;color:var(--muted);text-align:right">${m.score.toFixed(0)}/100</div>
-        </div>`;}).join('')}
+    ${sortedM.map((m,i)=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+      <div style="width:140px;font-size:12px;color:var(--muted);text-align:right;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.key}</div>
+      <div style="flex:1;height:16px;background:var(--s3);border-radius:3px;overflow:hidden">
+        <div style="width:${m.rate}%;height:100%;background:${COLORS[i%COLORS.length]};border-radius:3px;display:flex;align-items:center;padding-left:5px;font-size:10px;font-weight:600;color:#fff;white-space:nowrap">${m.rate.toFixed(1)}%</div>
+      </div>
+      <div style="width:36px;font-size:11px;color:var(--muted);text-align:right;flex-shrink:0">${m.score.toFixed(0)}</div>
+    </div>`).join('')}
+  </div>
+  <div class="card" style="margin-bottom:1.25rem">
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+      ${models.map((m,i)=>`<span style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)">
+        <span style="width:10px;height:10px;border-radius:2px;background:${COLORS[i%COLORS.length]};display:inline-block"></span>${m.key}</span>`).join('')}
     </div>
+    <div class="card-title">Tier-by-tier bypass rates</div>
+    <div style="position:relative;height:240px"><canvas id="cmp-chart" role="img" aria-label="Grouped bar chart comparing models per tier"></canvas></div>
   </div>`;
 
-  destroyChart('cmpChart');
-  charts['cmpChart'] = new Chart(document.getElementById('cmpChart'),{
+  destroyChart('cmp-chart');
+  charts['cmp-chart'] = new Chart(document.getElementById('cmp-chart'),{
     type:'bar',
     data:{
-      labels: tiers.map(t=>'Tier '+t+' — '+TIER_LABELS[t]),
+      labels:[1,2,3,4].map(t=>'T'+t+' '+TIER_LABEL[t].split(' ')[0]),
       datasets: models.map((m,i)=>({
-        label: m.name,
-        data: tiers.map(t=>(m.tiers[t]||{rate:0}).rate),
-        backgroundColor: COLORS[i%COLORS.length]+'cc',
-        borderRadius:3, borderSkipped:false
+        label:m.key, data:[1,2,3,4].map(t=>(m.tiers[t]||{rate:0}).rate),
+        backgroundColor:COLORS[i%COLORS.length]+'aa', borderRadius:3, borderSkipped:false
       }))
     },
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false}},
-      scales:{y:{min:0,max:100,ticks:{color:'#7a7f8e',callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.05)'}},
-              x:{ticks:{color:'#7a7f8e'},grid:{display:false}}}}
-  });
+      scales:{y:{min:0,max:100,ticks:{color:'#6b7385',callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.04)'}},
+              x:{ticks:{color:'#6b7385'},grid:{display:false}}}}});
 }
 
-// ─── PAYLOAD LOG ──────────────────────────────────────────────
+// ── payload log ───────────────────────────────────────────────
 function renderPayloads() {
-  const d = DATA[activeModel];
-  if (!d) return;
-  const tierF   = document.getElementById('filter-tier').value;
-  const statusF = document.getElementById('filter-status').value;
-  const sevF    = document.getElementById('filter-sev').value;
+  const fm = document.getElementById('f-model').value;
+  const ft = document.getElementById('f-tier').value;
+  const fs = document.getElementById('f-status').value;
+  const fv = document.getElementById('f-sev').value;
 
-  let rows = d.payloads;
-  if (tierF)   rows = rows.filter(r=>String(r.tier)===tierF);
-  if (statusF) rows = rows.filter(r=>String(r.success)===statusF);
-  if (sevF)    rows = rows.filter(r=>r.sev===sevF);
+  let rows = [];
+  for (const [model, d] of Object.entries(allResults)) {
+    if (fm && model !== fm) continue;
+    d.rows.forEach(r => rows.push({...r, _model: model}));
+  }
 
-  document.getElementById('filter-count').textContent = `${rows.length} results`;
-  document.getElementById('payload-tbody').innerHTML = rows.length ? rows.map(r=>`<tr>
-    <td><span class="pid">${r.id}</span></td>
-    <td style="font-size:11px;color:var(--muted);font-family:var(--mono)">${r.run.slice(-8)||'—'}</td>
-    <td style="color:var(--muted)">T${r.tier}</td>
-    <td>${r.cat.replace(/_/g,' ')}</td>
-    <td style="color:var(--muted);font-size:11px">${r.goal.replace(/_/g,' ')}</td>
-    <td><span class="sev-badge sev-${r.sev}">${r.sev}</span></td>
-    <td><span class="status-dot ${r.success?'s-bypass':'s-block'}"></span>${r.success?'<span style="color:#e24b4a">bypassed</span>':'<span style="color:#1baf7a">blocked</span>'}</td>
-    <td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${r.signal||'—'}</td>
-  </tr>`).join('') :
-  '<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:2rem">No results match filters</td></tr>';
+  const tierOf = r => { const m=(r.payload_id||'').match(/^T(\d)-/); return m?+m[1]:(+r.tier||0); };
+  if (ft) rows = rows.filter(r => String(tierOf(r)) === ft);
+  if (fs) rows = rows.filter(r => r.success === fs);
+  if (fv) rows = rows.filter(r => r.severity === fv);
+
+  document.getElementById('f-count').textContent = rows.length + ' results';
+  document.getElementById('payload-tbody').innerHTML = rows.length ?
+    rows.map(r=>`<tr>
+      <td class="mono" style="color:var(--accent)">${r.payload_id}</td>
+      <td style="color:var(--muted);font-size:11px">${r._model}</td>
+      <td style="color:var(--muted)">T${tierOf(r)}</td>
+      <td>${(r.category||'').replace(/_/g,' ')}</td>
+      <td style="color:var(--muted);font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(r.goal||'').replace(/_/g,' ')}</td>
+      <td><span class="sev sev-${r.severity}">${r.severity}</span></td>
+      <td><span class="dot ${r.success==='1'?'dot-r':'dot-g'}" style="margin-right:5px"></span>${r.success==='1'?'<span style="color:var(--red)">bypassed</span>':'<span style="color:var(--green)">blocked</span>'}</td>
+      <td class="mono" style="color:var(--muted)">${r.matched_signal||'—'}</td>
+      <td style="color:var(--muted);font-size:11px">${r.latency_ms||0}</td>
+    </tr>`).join('') :
+    '<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:2rem">No results match filters</td></tr>';
 }
 
-// ─── FINDINGS ─────────────────────────────────────────────────
-function renderFindings() {
-  const models = Object.values(DATA);
-  if (!models.length) return;
+// ── API keys page ─────────────────────────────────────────────
+const KEY_DEFS = [
+  {key:'ANTHROPIC_API_KEY',  label:'Anthropic',  placeholder:'sk-ant-…'},
+  {key:'OPENAI_API_KEY',     label:'OpenAI',     placeholder:'sk-…'},
+  {key:'GROQ_API_KEY',       label:'Groq',       placeholder:'gsk_…'},
+  {key:'GEMINI_API_KEY',     label:'Gemini',     placeholder:'AIza…'},
+  {key:'DEEPSEEK_API_KEY',   label:'DeepSeek',   placeholder:'sk-…'},
+  {key:'DASHSCOPE_API_KEY',  label:'Qwen / Alibaba',placeholder:'sk-…'},
+  {key:'ZAI_API_KEY',        label:'GLM / Z.ai', placeholder:'…'},
+  {key:'MISTRAL_API_KEY',    label:'Mistral',    placeholder:'…'},
+  {key:'COHERE_API_KEY',     label:'Cohere',     placeholder:'…'},
+  {key:'OPENROUTER_API_KEY', label:'OpenRouter', placeholder:'sk-or-v1-…'},
+];
 
-  // auto-generate findings from data
-  const findings = [];
-  const sorted = [...models].sort((a,b)=>a.rate-b.rate);
-  const best = sorted[0], worst = sorted[sorted.length-1];
+// ═══ defense engine page ═════════════════════════════════════════
+let defenseData = null;
+const covCol = p => p >= 75 ? '#22c55e' : p >= 50 ? '#f59e0b' : '#ef4444';
 
-  if (models.length >= 2) {
-    findings.push({
-      title: 'Model resistance gap',
-      text: `${best.name} has the lowest bypass rate at ${fmt(best.rate)}% while ${worst.name} reaches ${fmt(worst.rate)}% — a ${fmt(worst.rate-best.rate)}pp spread across ${models.length} models tested.`,
-      a: { label: best.name+' bypass', val: fmt(best.rate)+'%', col: colorForRate(best.rate) },
-      b: { label: worst.name+' bypass', val: fmt(worst.rate)+'%', col: colorForRate(worst.rate) }
-    });
+async function loadDefense() {
+  try {
+    const r = await fetch(`${API}/defense`);
+    if (!r.ok) { defenseData = null; return; }
+    const d = await r.json();
+    defenseData = (d && !d.error) ? d : null;
+  } catch (e) { defenseData = null; }
+}
+
+function defBadge(action) {
+  const col = { block:'var(--green)', sanitize:'var(--yellow)', alert:'#8b5cf6', allow:'var(--muted)' }[action] || 'var(--muted)';
+  return `<span class="dot" style="background:${col};margin-right:5px"></span>${action}`;
+}
+
+const defFilter = { tier:'', action:'' };
+function defFilterTier(v)   { defFilter.tier = v; defRenderRows(); }
+function defFilterAction(v) { defFilter.action = v; defRenderRows(); }
+
+function defRenderRows() {
+  if (!defenseData) return;
+  const rows = defenseData.attacks.filter(r =>
+    (!defFilter.tier   || String(r.tier) === defFilter.tier) &&
+    (!defFilter.action || r.action === defFilter.action));
+  const el = document.getElementById('df-count');
+  if (el) el.textContent = rows.length + ' of ' + defenseData.attacks.length + ' payloads';
+  const tb = document.getElementById('def-tbody');
+  if (!tb) return;
+  tb.innerHTML = rows.map(r => `
+    <tr>
+      <td class="mono">${r.id}</td>
+      <td>T${r.tier}</td>
+      <td>${(r.category||'').replace(/_/g,' ')}</td>
+      <td>${defBadge(r.action)}</td>
+      <td class="mono">${(+r.score).toFixed(2)}</td>
+      <td>${r.top_layer}</td>
+      <td class="mono">${r.latency_ms} ms</td>
+    </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:1.5rem">No rows match the filter</td></tr>';
+}
+
+function renderDefense() {
+  const el = document.getElementById('defense-content');
+  if (!el) return;
+  if (!defenseData) {
+    el.innerHTML = `<div class="empty"><h3>Defense data unavailable</h3><p>Start the server (<code>python server.py</code>) and click Refresh. Data is generated by <code>evaluate_defenses.py</code>.</p></div>`;
+    return;
   }
-
-  // find most vulnerable category across all models
-  const catRates = {};
-  models.forEach(m => {
-    Object.entries(m.categories).forEach(([c,v]) => {
-      if (!catRates[c]) catRates[c] = [];
-      if (v.total > 0) catRates[c].push(v.rate);
-    });
-  });
-  const avgCat = Object.entries(catRates)
-    .filter(([,r])=>r.length>0)
-    .map(([c,r])=>([c, r.reduce((a,b)=>a+b,0)/r.length]))
-    .sort((a,b)=>b[1]-a[1]);
-
-  if (avgCat.length) {
-    const [topCat, topRate] = avgCat[0];
-    findings.push({
-      title: 'Most dangerous attack category',
-      text: `"${topCat.replace(/_/g,' ')}" achieves the highest average bypass rate (${fmt(topRate)}%) across all tested models — making it the priority target for defense implementation.`,
-      a: { label: 'Avg bypass rate', val: fmt(topRate)+'%', col: colorForRate(topRate) },
-      b: { label: 'Models vulnerable', val: catRates[topCat].length+'/'+models.length, col: '#4f8ef7' }
-    });
-  }
-
-  // tier with biggest variance between models (most interesting)
-  if (models.length >= 2) {
-    let biggestVar = 0, biggestTier = 1;
-    for (let t=1; t<=4; t++) {
-      const rates = models.map(m=>(m.tiers[t]||{rate:0}).rate);
-      const max = Math.max(...rates), min = Math.min(...rates);
-      if (max-min > biggestVar) { biggestVar=max-min; biggestTier=t; }
-    }
-    const tierRates = models.map(m=>({name:m.name, rate:(m.tiers[biggestTier]||{rate:0}).rate})).sort((a,b)=>a.rate-b.rate);
-    findings.push({
-      title: `Tier ${biggestTier} — highest model variance`,
-      text: `Tier ${biggestTier} (${TIER_LABELS[biggestTier]}) shows the most variation between models — ${fmt(biggestVar)}pp spread. ${tierRates[0].name} resists it best at ${fmt(tierRates[0].rate)}% while ${tierRates[tierRates.length-1].name} scores ${fmt(tierRates[tierRates.length-1].rate)}%.`,
-      a: { label: tierRates[0].name, val: fmt(tierRates[0].rate)+'%', col: colorForRate(tierRates[0].rate) },
-      b: { label: tierRates[tierRates.length-1].name, val: fmt(tierRates[tierRates.length-1].rate)+'%', col: colorForRate(tierRates[tierRates.length-1].rate) }
-    });
-  }
-
-  // critical severity summary
-  const totalCrit = models.reduce((a,m)=>a+(m.severities.critical||{total:0}).total,0);
-  const bypassCrit= models.reduce((a,m)=>a+(m.severities.critical||{bypassed:0}).bypassed,0);
-  if (totalCrit > 0) {
-    findings.push({
-      title: 'Critical severity attack success rate',
-      text: `Across all models, ${bypassCrit} of ${totalCrit} critical-severity payloads succeeded — a ${fmt(bypassCrit/totalCrit*100)}% critical bypass rate. These represent the most dangerous real-world attack vectors.`,
-      a: { label: 'Critical bypassed', val: bypassCrit+'/'+totalCrit, col: colorForRate(bypassCrit/totalCrit*100) },
-      b: { label: 'Critical success rate', val: fmt(bypassCrit/totalCrit*100)+'%', col: colorForRate(bypassCrit/totalCrit*100) }
-    });
-  }
-
-  document.getElementById('findings-content').innerHTML = `
-  <div class="grid-2">
-    ${findings.map(f=>`<div class="card">
-      <div class="card-title">${f.title}</div>
-      <div class="finding-row"><div>${f.text}</div></div>
-      <div style="display:flex;gap:10px;margin-top:10px">
-        <div style="flex:1;text-align:center;background:${f.a.col}22;border-radius:8px;padding:.75rem">
-          <div style="font-size:18px;font-weight:700;color:${f.a.col}">${f.a.val}</div>
-          <div style="font-size:11px;color:var(--muted)">${f.a.label}</div>
-        </div>
-        <div style="flex:1;text-align:center;background:${f.b.col}22;border-radius:8px;padding:.75rem">
-          <div style="font-size:18px;font-weight:700;color:${f.b.col}">${f.b.val}</div>
-          <div style="font-size:11px;color:var(--muted)">${f.b.label}</div>
-        </div>
-      </div>
-    </div>`).join('')}
+  const m = defenseData.meta;
+  const fpr = (m.benign_fp / m.benign_total * 100).toFixed(1);
+  const tierKeys = Object.keys(m.tiers).sort();
+  const tierbars = tierKeys.map(t => {
+    const s = m.tiers[t];
+    return `<div class="hbar-row">
+      <div class="hbar-label">Tier ${t} — ${TIER_LABEL[t]||''}</div>
+      <div class="hbar-track"><div class="hbar-fill" style="width:${s.coverage_pct}%;background:${covCol(s.coverage_pct)}">${s.detected}/${s.total}</div></div>
+      <div class="hbar-pct">${s.coverage_pct.toFixed(0)}%</div></div>`;
+  }).join('');
+  const ctrlRows = defenseData.benign.map(b => `
+    <tr>
+      <td class="mono">${b.name}</td>
+      <td>${defBadge(b.action)}</td>
+      <td class="mono">${(+b.score).toFixed(2)}</td>
+      <td style="color:${b.false_positive?'var(--red)':'var(--green)'}">${b.false_positive?'FALSE POSITIVE':'ok — allowed'}</td>
+    </tr>`).join('');
+  let wk = tierKeys[0], wv = 101;
+  for (const t of tierKeys) { const v = m.tiers[t].coverage_pct; if (v < wv) { wv = v; wk = t; } }
+  el.innerHTML = `
+  <div class="kpi-grid">
+    <div class="kpi"><div class="kpi-label">Corpus coverage</div>
+      <div class="kpi-value" style="color:${covCol(m.coverage_pct)}">${m.coverage_pct.toFixed(1)}%</div>
+      <div class="kpi-sub">${m.detected}/${m.total_payloads} payloads detected — block mode</div></div>
+    <div class="kpi"><div class="kpi-label">False positives</div>
+      <div class="kpi-value" style="color:${m.benign_fp?'var(--yellow)':'var(--green)'}">${fpr}%</div>
+      <div class="kpi-sub">${m.benign_fp} of ${m.benign_total} benign controls blocked</div></div>
+    <div class="kpi"><div class="kpi-label">Worst-case latency</div>
+      <div class="kpi-value">${m.latency_max_ms} ms</div>
+      <div class="kpi-sub">mean ${m.latency_mean_ms} ms · p95 ${m.latency_p95_ms} ms</div></div>
+    <div class="kpi"><div class="kpi-label">Weakest tier</div>
+      <div class="kpi-value" style="color:var(--red)">${'Tier '+wk+' — '+wv.toFixed(0)+'%'}</div>
+      <div class="kpi-sub">encoding & obfuscation remains hardest</div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="card-title">Coverage by tier — ${m.total_payloads} attack payloads</div>${tierbars}</div>
+    <div class="card"><div class="card-title">Tier coverage chart</div>
+      <div style="position:relative;height:200px"><canvas id="def-chart" role="img" aria-label="Tier coverage bar chart"></canvas></div></div>
+  </div>
+  <div class="filter-bar">
+    <select class="filter-sel" id="df-tier" onchange="defFilterTier(this.value)">
+      <option value="">All tiers</option>
+      <option value="1">Tier 1</option><option value="2">Tier 2</option>
+      <option value="3">Tier 3</option><option value="4">Tier 4</option>
+    </select>
+    <select class="filter-sel" id="df-action" onchange="defFilterAction(this.value)">
+      <option value="">All actions</option>
+      <option value="block">block</option><option value="allow">allow</option>
+    </select>
+    <span id="df-count" style="font-size:12px;color:var(--muted);align-self:center;margin-left:4px"></span>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden;margin-bottom:1rem">
+    <table class="tbl">
+      <thead><tr><th>Payload</th><th>Tier</th><th>Category</th><th>Action</th><th>Score</th><th>Top layer</th><th>Latency</th></tr></thead>
+      <tbody id="def-tbody"></tbody>
+    </table>
+  </div>
+  <div class="card"><div class="card-title">Benign controls — false-positive probe</div>
+    <table class="tbl">
+      <thead><tr><th>Control</th><th>Action</th><th>Score</th><th>Verdict</th></tr></thead>
+      <tbody>${ctrlRows}</tbody>
+    </table>
+    <p style="font-size:12px;color:var(--muted);margin-top:.75rem">Layer stack: syntax → semantic → encoding · threshold 0.6 · block mode. Missed payloads stay visible as <span style="color:var(--muted)">allow</span> rows.</p>
   </div>`;
+
+  defRenderRows();
+  destroyChart('def-chart');
+  charts['def-chart'] = new Chart(document.getElementById('def-chart'),{
+    type:'bar',
+    data:{labels:tierKeys.map(t=>'Tier '+t),
+      datasets:[{data:tierKeys.map(t=>m.tiers[t].coverage_pct),
+        backgroundColor:tierKeys.map(t=>covCol(m.tiers[t].coverage_pct)+'bb'),borderRadius:3,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{y:{min:0,max:100,ticks:{color:'#6b7385',callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.04)'}},
+              x:{ticks:{color:'#6b7385'},grid:{display:false}}}}});
 }
 
-// ─── render everything for active model ───────────────────────
-function renderAll() {
-  renderOverview();
-  // re-render current page if not overview
-  const activePage = document.querySelector('.page.active');
-  if (activePage) {
-    const id = activePage.id.replace('page-','');
+// ═══ defense run + scan ══════════════════════════════════════════
+let defRunEs = null;
+
+function defTermLine(text) {
+  const term = document.getElementById('def-terminal');
+  if (!term) return;
+  let cls = 't-line';
+  if (text.includes('FALSE POSITIVE'))                               cls = 't-warn';
+  else if (text.includes('\u2192 BLOCK') || text.includes('\u2192 SANITIZE')) cls = 't-block';
+  else if (text.includes('\u2192 ALLOW'))                           cls = 't-info';
+  else if (text.startsWith('Coverage:') || text.includes('Saved to')) cls = 't-done';
+  else if (text.startsWith('Running') || text.includes('PromptShield')) cls = 't-header';
+  const div = document.createElement('div');
+  div.className = cls;
+  div.textContent = text;
+  term.appendChild(div);
+  term.scrollTop = term.scrollHeight;
+}
+
+async function startDefenseRun() {
+  const term = document.getElementById('def-terminal');
+  const btn = document.getElementById('def-run-btn');
+  const lbl = document.getElementById('def-run-label');
+  if (!term || !btn) return;
+  term.style.display = 'block';
+  term.innerHTML = '';
+  btn.disabled = true;
+  lbl.textContent = 'Running defense engine\u2026';
+  try {
+    const res = await fetch(`${API}/defense/run`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: '{}'
+    });
+    const data = await res.json();
+    if (!data.run_key) throw new Error(data.error || 'could not start');
+    if (defRunEs) defRunEs.close();
+    defRunEs = new EventSource(`${API}/defense/run/${data.run_key}/stream`);
+    defRunEs.onmessage = async (e) => {
+      try {
+        const d = JSON.parse(e.data);
+        if (d.line !== undefined) defTermLine(d.line);
+        if (d.done) {
+          defRunEs.close();
+          defRunEs = null;
+          btn.disabled = false;
+          lbl.textContent = d.status === 'done'
+            ? 'Done \u2014 results refreshed below.'
+            : 'Stopped with an error \u2014 see log.';
+          await loadDefense();
+          renderDefense();
+        }
+      } catch (err) { console.warn('defense SSE parse', err); }
+    };
+    defRunEs.onerror = () => { /* stream closes naturally */ };
+  } catch (e) {
+    btn.disabled = false;
+    lbl.textContent = 'Failed to start: ' + e.message;
+  }
+}
+
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+async function defScan() {
+  const text = document.getElementById('scan-text').value;
+  const mode = document.getElementById('scan-mode').value;
+  const tier = document.getElementById('scan-tier').value;
+  const out  = document.getElementById('scan-result');
+  if (!text.trim()) { out.innerHTML = '<span style="color:var(--yellow)">Paste some text first.</span>'; return; }
+  out.textContent = 'Scanning\u2026';
+  try {
+    const r = await fetch(`${API}/defense/scan`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({text, mode, tier})
+    });
+    const d = await r.json();
+    if (d.error) { out.innerHTML = '<span style="color:var(--red)">Error: ' + escHtml(d.error) + '</span>'; return; }
+    const col = { block:'var(--red)', sanitize:'var(--yellow)', alert:'#8b5cf6', allow:'var(--green)' }[d.action] || 'var(--muted)';
+    const layers = (d.layers || []).map(l => l.layer + ' (' + escHtml(String(l.marker)).slice(0, 40) + ')').join(', ');
+    out.innerHTML = `
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <span style="font-weight:700;color:${col}">${d.action.toUpperCase()}</span>
+        <span style="color:var(--muted)">score ${(+d.score).toFixed(2)}</span>
+        <span style="color:var(--muted)">${layers || 'no layers fired'}</span>
+      </div>
+      <div style="color:var(--muted);font-size:12px;margin-top:3px">${escHtml(d.explanation || '')}</div>
+      ${d.sanitized ? `<div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);margin-bottom:3px">SANITIZED OUTPUT</div><div class="mono" style="white-space:pre-wrap;background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:8px">${escHtml(d.sanitized)}</div></div>` : ''}
+    `;
+  } catch (e) {
+    out.innerHTML = '<span style="color:var(--red)">Failed: ' + escHtml(e.message) + '</span>';
+  }
+}
+
+async function loadKeys() {
+  const res  = await fetch(`${API}/env`).catch(()=>null);
+  const data = res ? await res.json().catch(()=>({})) : {};
+  document.getElementById('key-grid').innerHTML = KEY_DEFS.map(d=>`
+    <div class="key-row">
+      <div class="key-name">${d.label}</div>
+      <div class="key-status" style="color:${data[d.key]?'var(--green)':'var(--dim)'}">${data[d.key]?' Set':'Not set'}</div>
+      <input class="key-input" id="ki-${d.key}" type="password" placeholder="${d.placeholder}" autocomplete="off" />
+    </div>`).join('');
+}
+
+async function saveKeys() {
+  const payload = {};
+  KEY_DEFS.forEach(d => {
+    const val = document.getElementById('ki-'+d.key)?.value?.trim();
+    if (val) payload[d.key] = val;
+  });
+  if (!Object.keys(payload).length) { alert('No keys entered.'); return; }
+  const res = await fetch(`${API}/env`, {
+    method: 'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json();
+  alert('Saved for this session: ' + data.set.join(', '));
+  loadKeys();
+  loadModels();
+}
+
+// ── chart cleanup ─────────────────────────────────────────────
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+// ── refresh all ───────────────────────────────────────────────
+async function refreshAll() {
+  await Promise.all([loadModels(), loadResults(), loadDefense()]);
+  if (document.getElementById('page-defense') && document.getElementById('page-defense').classList.contains('active')) renderDefense();
+  const active = document.querySelector('.page.active');
+  if (active) {
+    const id = active.id.replace('page-','');
+    if (id==='overview') renderOverview();
     if (id==='tiers')    renderTiers();
     if (id==='compare')  renderCompare();
     if (id==='payloads') renderPayloads();
-    if (id==='findings') renderFindings();
   }
 }
+
+// ── init ──────────────────────────────────────────────────────
+async function init() {
+  setServerStatus('spin');
+  await Promise.all([loadModels(), loadResults(), loadKeys(), loadDefense()]);
+  // auto-refresh every 20 seconds
+  clearInterval(refreshTimer);
+  refreshTimer = setInterval(async () => {
+    await loadResults();
+    const active = document.querySelector('.page.active');
+    if (active) {
+      const id = active.id.replace('page-','');
+      if (id==='overview') renderOverview();
+      if (id==='compare')  renderCompare();
+      if (id==='payloads') renderPayloads();
+    }
+  }, 20000);
+}
+
+init();
 </script>
 </body>
 </html>

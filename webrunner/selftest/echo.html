@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Local echo page (PromptShield webrunner selftest)</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 3rem auto; }
+  #response { border: 1px solid #ccc; padding: 1rem; min-height: 3rem; background: #f7f7f7; }
+</style>
+</head>
+<body>
+<h1>Echo page</h1>
+<p>Type anything and press send. The page echoes it after a short delay.</p>
+<input id="prompt" style="width:70%" placeholder="type here">
+<button id="send">Send</button>
+<div id="response" style="margin-top:1rem">waiting...</div>
+<script>
+document.getElementById("send").addEventListener("click", function () {
+  var v = document.getElementById("prompt").value;
+  setTimeout(function () {
+    document.getElementById("response").textContent = "ECHO: " + v;
+  }, 300);
+});
+</script>
+</body>
+</html>
