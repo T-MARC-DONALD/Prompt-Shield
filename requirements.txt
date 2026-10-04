@@ -30,3 +30,7 @@ python-dotenv>=1.0.0
 # ── Note: Z.ai (GLM models) uses the openai package ────────
 # No extra install needed — just set ZAI_API_KEY
 # Get key at: https://bigmodel.cn (China) or https://z.ai (Global)
+
+# -- Flask (local web server + dashboard) --
+flask>=3.0.0
+flask-cors>=4.0.0
