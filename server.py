@@ -20,12 +20,17 @@ import json
 import time
 import sqlite3
 import threading
+import subprocess
 import datetime
 from pathlib import Path
 from flask import Flask, jsonify, request, send_from_directory, Response
 from flask_cors import CORS
 
 # ── paths ──────────────────────────────────────────────────────
+# Ensure the project directory is importable (embedded/isolated Pythons do
+# not add the script directory to sys.path automatically).
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 BASE_DIR    = Path(__file__).parent
 RESULTS_DIR = BASE_DIR / "results"
 DB_PATH     = RESULTS_DIR / "promptshield.db"
@@ -73,7 +78,7 @@ def get_models():
                 "delay"   : round(60 / rpm, 1),
                 "env_key" : env_key or "none",
                 "key_set" : key_set,
-                "free"    : "free" in alias or provider == "ollama",
+                "free"    : "free" in alias or provider in ("ollama", "guard"),
             })
 
         # group by provider
@@ -529,6 +534,213 @@ def defense_scan():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ── DEFENSE CHECK ── full pipeline screening (input or output) ────────────────────
+_session_guard = None
+
+
+def _get_guard():
+    global _session_guard
+    if _session_guard is None:
+        from defenses import SessionGuard
+        _session_guard = SessionGuard()
+    return _session_guard
+
+
+@app.route("/api/defense/check", methods=["POST"])
+def defense_check():
+    data = request.json or {}
+    text = data.get("text", "")
+    direction = data.get("direction", "input")
+    session_id = (data.get("session_id") or "dashboard")[:64]
+    try:
+        from defenses import screen_input, screen_output
+        if direction == "output":
+            rep = screen_output(text, mode=data.get("mode", "redact"))
+            return jsonify({
+                "direction": "output", "action": rep.action, "score": rep.score,
+                "findings": [{"kind": f.kind, "reason": f.reason, "sample": f.sample,
+                              "severity": f.severity} for f in rep.findings],
+                "explanation": rep.explanation, "cleaned": rep.cleaned,
+            })
+        r = screen_input(text, session=_get_guard(), session_id=session_id,
+                         mode=data.get("mode", "block"))
+        return jsonify({"direction": "input", **r.as_dict()})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/guard/stats")
+def guard_stats_api():
+    sid = request.args.get("session_id")
+    try:
+        return jsonify(_get_guard().stats(sid))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ── AUTORT ── automated multi-turn red-teaming campaigns ─────────────────────────────
+autort_runs = {}
+
+
+@app.route("/api/autort/programs")
+def autort_programs():
+    out = []
+    try:
+        import yaml
+        for f in sorted((BASE_DIR / "programs").glob("*.yaml")):
+            try:
+                doc = yaml.safe_load(open(f, encoding="utf-8")) or {}
+                lanes = list((doc.get("lanes") or {}).keys())
+                out.append({"name": doc.get("program") or f.stem, "file": f.name, "lanes": lanes})
+            except Exception:
+                out.append({"name": f.stem, "file": f.name, "lanes": []})
+    except Exception:
+        pass
+    return jsonify({"programs": out})
+
+
+@app.route("/api/autort/payloads")
+def autort_payloads():
+    files = sorted(f.name for f in (BASE_DIR / "payloads").glob("*.yaml"))
+    return jsonify({"payloads": files})
+
+
+@app.route("/api/autort/run", methods=["POST"])
+def autort_start():
+    data = request.json or {}
+    backend = str(data.get("backend") or "mock")
+    run_key = datetime.datetime.now().strftime("%H%M%S") + "_autort"
+    autort_runs[run_key] = {
+        "status": "starting", "output": [],
+        "started": datetime.datetime.now().isoformat(),
+        "finished": None,
+    }
+
+    def _append(line):
+        out = autort_runs[run_key]["output"]
+        out.append(line)
+        if len(out) > 4000:
+            out[:] = out[-3000:]
+
+    def run_in_thread():
+        try:
+            cmd = [sys.executable, "autort_cli.py", "run",
+                   "--program", str(data.get("program") or "0din"),
+                   "--payloads", str(data.get("payloads") or "payloads/tier1_direct.yaml"),
+                   "--lane", str(data.get("lane") or "model_guardrail"),
+                   "--backend", backend,
+                   "--strategy", str(data.get("strategy") or "staged"),
+                   "--budget", str(int(data.get("budget") or 30)),
+                   "--variants", str(int(data.get("variants") or 3)),
+                   "--out", "results/autort"]
+            if data.get("adapt"):
+                cmd.append("--adapt")
+            if data.get("chains"):
+                cmd.append("--chains")
+            if backend == "api":
+                cmd += ["--base-url", str(data.get("base_url") or ""),
+                        "--model", str(data.get("model") or ""),
+                        "--key-env", str(data.get("key_env") or "OPENAI_API_KEY")]
+            if backend == "cli":
+                cmd += ["--cli-target", str(data.get("cli_target") or "")]
+            if backend in ("api", "cli"):
+                if not data.get("confirm"):
+                    _append("REFUSING: network/cli execution requires confirmation "
+                            "(tick 'Confirm live execution' and retry).")
+                    autort_runs[run_key]["status"] = "error"
+                    return
+                cmd.append("--yes")
+
+            _append("$ " + " ".join(cmd[:8]) + (" ..." if len(cmd) > 8 else ""))
+            _append("")
+            autort_runs[run_key]["status"] = "running"
+            proc = subprocess.Popen(cmd, cwd=str(BASE_DIR), stdout=subprocess.PIPE,
+                                    stderr=subprocess.STDOUT, text=True,
+                                    encoding="utf-8", errors="replace",
+                                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+            for line in proc.stdout:
+                _append(line.rstrip())
+            proc.wait()
+            autort_runs[run_key]["status"] = "done" if proc.returncode == 0 else "error"
+        except Exception as e:
+            import traceback
+            _append("ERROR: " + str(e))
+            _append(traceback.format_exc())
+            autort_runs[run_key]["status"] = "error"
+        finally:
+            autort_runs[run_key]["finished"] = datetime.datetime.now().isoformat()
+
+    threading.Thread(target=run_in_thread, daemon=True).start()
+    return jsonify({"run_key": run_key, "status": "started"})
+
+
+@app.route("/api/autort/run/<run_key>")
+def autort_status(run_key):
+    run = autort_runs.get(run_key)
+    if not run:
+        return jsonify({"error": "Run not found"}), 404
+    return jsonify(run)
+
+
+@app.route("/api/autort/run/<run_key>/stream")
+def autort_stream(run_key):
+    def generate():
+        sent = 0
+        while True:
+            run = autort_runs.get(run_key)
+            if not run:
+                yield "data: " + json.dumps({"error": "not found"}) + "\n\n"
+                break
+            lines = run["output"]
+            if len(lines) > sent:
+                for line in lines[sent:]:
+                    yield "data: " + json.dumps({"line": line, "status": run["status"]}) + "\n\n"
+                sent = len(lines)
+            if run["status"] in ("done", "error"):
+                yield "data: " + json.dumps({"done": True, "status": run["status"]}) + "\n\n"
+                break
+            time.sleep(0.2)
+
+    return Response(
+        generate(),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.route("/api/autort/results")
+def autort_results():
+    base = BASE_DIR / "results" / "autort"
+    items = []
+    if base.exists():
+        for rep in sorted(base.glob("*.report.md"), reverse=True):
+            name = rep.name[:-len(".report.md")]
+            res = rep.with_name(name + ".results.jsonl")
+            count = 0
+            if res.exists():
+                count = sum(1 for l in res.read_text(encoding="utf-8", errors="replace").splitlines() if l.strip())
+            items.append({
+                "name": name,
+                "path": str(rep.relative_to(BASE_DIR)).replace("\\", "/"),
+                "results": count,
+                "has_report": True,
+                "summary": rep.read_text(encoding="utf-8", errors="replace")[:300],
+            })
+            if len(items) >= 40:
+                break
+    return jsonify({"campaigns": items})
+
+
+@app.route("/api/autort/report")
+def autort_report():
+    rel = request.args.get("path", "")
+    base = (BASE_DIR / "results" / "autort").resolve()
+    p = (BASE_DIR / rel).resolve()
+    if not str(p).startswith(str(base)) or not p.exists() or not p.is_file():
+        return jsonify({"error": "not found"}), 404
+    return jsonify({"path": rel, "text": p.read_text(encoding="utf-8", errors="replace")[:24000]})
 
 
 @app.route("/api/free-models")

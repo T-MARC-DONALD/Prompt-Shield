@@ -1,0 +1,55 @@
+# PromptShield — full loop in Docker: Ollama (local LLM) + Guard Server (defense stack).
+#
+# On any cloud server (Ubuntu/Debian with Docker + Compose v2):
+#   export GUARD_TOKEN="choose-a-strong-token"
+#   export OLLAMA_MODEL="llama3.2"        # CPU-only box? use llama3.2:1b
+#   docker compose up -d                  # starts both, pulls the model on first boot
+#   curl http://127.0.0.1:8090/health
+#
+# Only the guard (8090) is published — Ollama (11434) stays on the internal network.
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama-data:/root/.ollama
+    restart: unless-stopped
+    # GPU hosts (nvidia-container-toolkit + Compose >= 2.30): uncomment to pass the GPU
+    # gpus: all
+
+  ollama-pull:
+    image: ollama/ollama:latest
+    depends_on:
+      - ollama
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        sleep 8
+        for i in 1 2 3 4 5; do
+          ollama pull "$$OLLAMA_MODEL" && break
+          echo "pull retry $$i ..."; sleep 15
+        done
+        echo "model ready: $$OLLAMA_MODEL"
+    restart: "no"
+
+  guard:
+    build: .
+    depends_on:
+      - ollama
+    environment:
+      GUARD_HOST: "0.0.0.0"
+      GUARD_PORT: "8090"
+      GUARD_TOKEN: ${GUARD_TOKEN:?set GUARD_TOKEN before starting}
+      UPSTREAM_URL: http://ollama:11434/v1
+      UPSTREAM_KEY: "***"
+      UPSTREAM_MODEL: ${OLLAMA_MODEL:-llama3.2}
+      GUARD_MAX_REQUESTS: "500"
+    ports:
+      - "8090:8090"
+    restart: unless-stopped
+
+volumes:
+  ollama-data:

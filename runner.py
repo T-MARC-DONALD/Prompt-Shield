@@ -13,6 +13,7 @@ Supported providers:
   cohere     — Command R+
   mistral    — Mistral Large, Small (via OpenAI-compat API)
   ollama     — Any local model (no API key needed)
+    guard      - Models behind the PromptShield Guard Server (needs GUARD_TOKEN)
   zai        — GLM-5.2, GLM-4.5, GLM-4V (Zhipu AI, OpenAI-compat)
 
 Usage:
@@ -23,6 +24,7 @@ Usage:
   python runner.py --model cohere                # Cohere Command R+
   python runner.py --model mistral               # Mistral Large
   python runner.py --model ollama-llama3         # Local Ollama
+    python runner.py --model guard-llama3          # Local model THROUGH the guard (GUARD_TOKEN)
   python runner.py --tier 1 --tier 2             # specific tiers
   python runner.py --dry-run                     # preview only
   python runner.py --list-models                 # show all models
@@ -101,6 +103,12 @@ MODELS = {
     "ollama-mistral": ("ollama",    "mistral",                   999,  None),
     "ollama-phi3"   : ("ollama",    "phi3",                      999,  None),
     "ollama-gemma"  : ("ollama",    "gemma2",                    999,  None),
+
+    # -- Guarded local models (through the PromptShield Guard Server) --
+    "guard-llama3"  : ("guard",     "llama3.2",                  999,  "GUARD_TOKEN"),
+    "guard-mistral" : ("guard",     "mistral",                   999,  "GUARD_TOKEN"),
+    "guard-phi3"    : ("guard",     "phi3",                      999,  "GUARD_TOKEN"),
+    "guard-gemma"   : ("guard",     "gemma2",                    999,  "GUARD_TOKEN"),
 
     # ── Zhipu AI / Z.ai (OpenAI-compatible endpoint) ──────────────
     # Get API key at: https://bigmodel.cn or https://z.ai
@@ -200,6 +208,7 @@ MODEL_SHORTCUTS = {
     "ollama"      : "ollama-llama3",
     "local"       : "ollama-llama3",
     "phi"         : "ollama-phi3",
+    "guarded"     : "guard-llama3",
 
     # OpenRouter shortcuts
     "openrouter"       : "or-llama",
@@ -272,6 +281,26 @@ def call_openai(prompt: str, api_model: str) -> tuple[str, int]:
     client = OpenAI()
     start  = time.time()
     resp   = client.chat.completions.create(
+        model=api_model, max_tokens=1024,
+        messages=[
+            {"role": "system", "content": TARGET_SYSTEM_PROMPT},
+            {"role": "user",   "content": prompt}
+        ]
+    )
+    text = resp.choices[0].message.content if resp.choices else ""
+    return text, int((time.time()-start)*1000)
+
+def call_guard(prompt: str, api_model: str) -> tuple[str, int]:
+    # Routed through the PromptShield Guard Server -- defense stack active.
+    # base URL: GUARD_URL (default http://127.0.0.1:8090/v1), key: GUARD_TOKEN.
+    from openai import OpenAI
+    client = OpenAI(
+        api_key=os.environ.get("GUARD_TOKEN", "guard"),
+        base_url=os.environ.get("GUARD_URL", "http://127.0.0.1:8090/v1"),
+        default_headers={"X-Session-Id": os.environ.get("GUARD_SESSION_ID", "runner")},
+    )
+    start = time.time()
+    resp  = client.chat.completions.create(
         model=api_model, max_tokens=1024,
         messages=[
             {"role": "system", "content": TARGET_SYSTEM_PROMPT},
@@ -419,7 +448,7 @@ def call_ollama(prompt: str, api_model: str) -> tuple[str, int]:
     from openai import OpenAI
     client = OpenAI(
         api_key="ollama",           # required by the SDK but ignored by Ollama
-        base_url="http://localhost:11434/v1"
+        base_url=os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434/v1")
     )
     start = time.time()
     resp  = client.chat.completions.create(
@@ -446,6 +475,7 @@ CALLERS = {
     "openrouter" : call_openrouter,
     "zai"        : call_zai,
     "ollama"     : call_ollama,
+    "guard"      : call_guard,
 }
 
 def call_llm(prompt: str, provider: str, api_model: str) -> tuple[str, int]:
@@ -703,7 +733,7 @@ def run(model_alias: str = "claude", tier_filter: list[int] = None,
     print(f"  Tiers    : {tier_filter or 'ALL'}")
     print(f"  Defense  : {defense_mode.upper()}")
     print(f"  Dry Run  : {dry_run}")
-    if provider != "ollama":
+    if provider not in ("ollama", "guard"):
         print(f"  Delay    : {delay}s between requests (~{int(60/delay)} RPM)")
     print()
 
@@ -1032,6 +1062,7 @@ Examples:
   python runner.py --model gpt4o-mini           OpenAI GPT-4o-mini
   python runner.py --model gemini               Gemini 2.0 Flash
   python runner.py --model ollama-llama3        Local Ollama (no API key)
+    python runner.py --model guard-llama3        Local model behind the PromptShield Guard
   python runner.py --model mistral              Mistral Large
   python runner.py --tier 1 --tier 2            Specific tiers only
   python runner.py --compare claude groq-llama gemini   Side-by-side compare

@@ -6,25 +6,24 @@
 <title>PromptShield</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap');
 :root {
-  --bg:       #080a0f;
-  --surface:  #0e1117;
-  --s2:       #141820;
-  --s3:       #1c2230;
-  --border:   rgba(255,255,255,0.06);
-  --border2:  rgba(255,255,255,0.11);
-  --text:     #dde2ec;
-  --muted:    #6b7385;
-  --dim:      #3d4455;
-  --accent:   #3b82f6;
-  --accent2:  #6366f1;
-  --red:      #ef4444;
-  --orange:   #f97316;
-  --yellow:   #eab308;
-  --green:    #22c55e;
-  --font:     'Inter', system-ui, sans-serif;
-  --mono:     'IBM Plex Mono', monospace;
+  --bg:       #05070c;
+  --surface:  #090d14;
+  --s2:       #0d1420;
+  --s3:       #131c2b;
+  --border:   rgba(110,200,255,0.07);
+  --border2:  rgba(110,200,255,0.16);
+  --text:     #d6e4f2;
+  --muted:    #6f8297;
+  --dim:      #3c4c60;
+  --accent:   #2bd6ff;
+  --accent2:  #7c6bff;
+  --red:      #ff4d5e;
+  --orange:   #ff9f45;
+  --yellow:   #ffd166;
+  --green:    #3dffa2;
+  --font:     -apple-system, "Segoe UI", system-ui, Roboto, sans-serif;
+  --mono:     "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
   --r:        8px;
   --r2:       12px;
 }
@@ -190,6 +189,118 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); font
 .filter-sel { background: var(--surface); border: 1px solid var(--border2); color: var(--text); padding: 5px 10px; border-radius: 6px; font-size: 12px; font-family: var(--font); outline: none; }
 .filter-sel:focus { border-color: var(--accent); }
 </style>
+<style id="vibe">
+::selection{background:rgba(43,214,255,.22);color:#fff}
+*::-webkit-scrollbar{width:10px;height:10px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:#16202e;border-radius:6px;border:2px solid #05070c}
+*::-webkit-scrollbar-thumb:hover{background:#22304a}
+:focus-visible{outline:1px solid var(--accent);outline-offset:2px}
+.app{position:relative;z-index:1}
+body{
+  background:
+    radial-gradient(1000px 520px at 88% -12%, rgba(124,107,255,.12), transparent 60%),
+    radial-gradient(900px 560px at -12% 28%, rgba(43,214,255,.08), transparent 55%),
+    var(--bg);
+}
+body::before{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background-image:
+    linear-gradient(rgba(140,200,255,.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(140,200,255,.028) 1px, transparent 1px);
+  background-size:46px 46px;
+  -webkit-mask-image:radial-gradient(1500px 900px at 55% -5%, #000 25%, transparent 80%);
+  mask-image:radial-gradient(1500px 900px at 55% -5%, #000 25%, transparent 80%);
+}
+@keyframes fadeup{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes blinkCursor{50%{opacity:0}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes scan{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+.page.active{animation:fadeup .22s ease-out}
+.side{background:linear-gradient(180deg,#090d14,#070a10)}
+.logo-mark{font-family:var(--mono);font-weight:600;color:#04121a;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 0 14px rgba(43,214,255,.35)}
+.logo-text{font-family:var(--mono);letter-spacing:.02em}
+.logo-sub{text-transform:uppercase;letter-spacing:.14em;font-size:9px}
+.nav-section{display:flex;align-items:center;gap:8px}
+.nav-section::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--border2),transparent)}
+.nav-item{font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;font-size:11px;transition:transform .12s ease, background .12s ease, color .12s ease}
+.nav-item:hover{transform:translateX(2px)}
+.nav-item.active{box-shadow:inset 0 0 0 1px rgba(43,214,255,.25)}
+.nav-item.active::before{content:"";position:absolute;left:-6px;top:7px;bottom:7px;width:3px;border-radius:2px;background:var(--accent);box-shadow:0 0 10px rgba(43,214,255,.7)}
+.badge{font-family:var(--mono)}
+.topbar{position:sticky;top:0;z-index:6;background:rgba(8,12,19,.86);backdrop-filter:blur(10px)}
+.topbar::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:linear-gradient(90deg,transparent 0%,rgba(43,214,255,.55) 30%,rgba(124,107,255,.55) 70%,transparent 100%)}
+.clock{font-family:var(--mono);font-size:11.5px;color:var(--muted);letter-spacing:.1em}
+.page-title{font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em}
+.tag{font-family:var(--mono);font-size:10.5px}
+.srv-ok{background:var(--green);color:var(--green)}
+.srv-err{background:var(--red);color:var(--red)}
+.srv-spin{background:var(--yellow);color:var(--yellow);animation:pulse 1.2s ease-in-out infinite}
+.srv-dot{box-shadow:0 0 8px currentColor}
+.btn{font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;font-size:10.5px;border-radius:6px;transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease, color .15s ease}
+.btn:hover:not(:disabled){transform:translateY(-1px)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+.btn-primary{background:linear-gradient(135deg,rgba(43,214,255,.20),rgba(124,107,255,.18));border-color:rgba(43,214,255,.65);color:#eafcff;text-shadow:0 0 8px rgba(43,214,255,.35)}
+.btn-primary:hover:not(:disabled){box-shadow:0 0 20px rgba(43,214,255,.35);background:linear-gradient(135deg,rgba(43,214,255,.32),rgba(124,107,255,.28))}
+.btn-danger{background:linear-gradient(135deg,rgba(255,77,94,.2),rgba(255,77,94,.08));border-color:rgba(255,77,94,.6);color:#ffe3e6}
+.btn-danger:hover:not(:disabled){box-shadow:0 0 18px rgba(255,77,94,.35)}
+.btn-ghost:hover:not(:disabled){border-color:rgba(43,214,255,.5);color:var(--accent)}
+.card{border-radius:var(--r2);background:linear-gradient(180deg,var(--s2),rgba(11,16,26,.65));position:relative;transition:border-color .15s ease}
+.card:hover{border-color:var(--border2)}
+.card-title{font-family:var(--mono);text-transform:uppercase;letter-spacing:.12em;font-size:10.5px}
+.card-title::before{content:"// ";color:var(--accent);opacity:.8}
+.kpi{border-radius:var(--r2);background:linear-gradient(180deg,var(--s2),#0a0f18);overflow:hidden;position:relative}
+.kpi::after{content:"";position:absolute;right:-36px;top:-36px;width:110px;height:110px;border-radius:50%;background:radial-gradient(circle,rgba(43,214,255,.10),transparent 70%)}
+.kpi-value{font-family:var(--mono);font-variant-numeric:tabular-nums;text-shadow:0 0 14px rgba(43,214,255,.18)}
+.kpi-label{font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em}
+.terminal{border-radius:var(--r);box-shadow:inset 0 0 46px rgba(43,214,255,.05);position:relative}
+.terminal::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:repeating-linear-gradient(0deg,rgba(255,255,255,.02) 0 1px,transparent 1px 3px)}
+.terminal::before{content:"\258D";position:absolute;left:8px;bottom:4px;color:var(--accent);opacity:.55;animation:blinkCursor 1.1s steps(1) infinite}
+.terminal .t-header{color:var(--accent2)}
+.tbl th{font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;font-size:10px}
+.tbl tr:hover td{background:rgba(43,214,255,.05)}
+.mono{font-family:var(--mono)}
+.empty{border:1px dashed var(--border2);border-radius:var(--r2);padding:2.2rem 1.5rem;background:rgba(13,20,32,.4)}
+.empty h3{font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;font-size:12px;color:var(--muted)}
+.filter-sel,.key-input{font-family:var(--mono);font-size:11.5px;border-radius:6px;transition:border-color .15s ease, box-shadow .15s ease}
+.filter-sel:focus,.key-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(43,214,255,.12)}
+.model-card{transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease}
+.model-card:hover{transform:translateY(-2px)}
+.model-card.selected{border-color:rgba(43,214,255,.6);box-shadow:0 0 16px rgba(43,214,255,.22)}
+.hbar-fill{border-radius:4px;box-shadow:0 0 10px rgba(43,214,255,.18)}
+.hbar-label,.hbar-pct{font-family:var(--mono);font-size:10.5px}
+.sev{font-family:var(--mono);letter-spacing:.04em}
+.ring-num{font-family:var(--mono)}
+.ring-lbl{font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;font-size:10px}
+.provider-name{font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em}
+.provider-badge,.pb-free,.pb-paid{font-family:var(--mono)}
+.side-stat .v{font-family:var(--mono)}
+.sev-critical{color:var(--red)}.sev-high{color:var(--orange)}.sev-medium{color:var(--yellow)}.sev-low{color:var(--green)}
+/* --- new components: autort + guard bench --- */
+.form-row{display:flex;align-items:center;gap:10px;margin-bottom:.55rem}
+.form-row label{width:96px;font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);flex-shrink:0}
+.form-row .filter-sel,.form-row .key-input{flex:1;min-width:0}
+.at-camp{display:flex;align-items:center;gap:12px;padding:.65rem .25rem;border-bottom:1px solid var(--border);transition:background .12s ease}
+.at-camp:hover{background:rgba(43,214,255,.04)}
+.at-camp:last-child{border-bottom:none}
+.at-camp-name{color:var(--accent);font-size:12.5px;flex:1;word-break:break-all}
+.at-camp-meta{font-size:11.5px;color:var(--muted)}
+.scan-input{width:100%;min-height:84px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:12px;padding:10px;box-sizing:border-box;transition:border-color .15s ease, box-shadow .15s ease}
+.scan-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(43,214,255,.12)}
+.scan-head{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.scan-act{font-family:var(--mono);font-weight:700;letter-spacing:.08em}
+.chip{display:inline-block;font-size:11px;font-family:var(--mono);color:var(--yellow);background:rgba(255,209,102,.08);border:1px solid rgba(255,209,102,.25);border-radius:20px;padding:2px 10px;margin:2px 4px 2px 0}
+.scan-list{margin:6px 0 0 18px;font-size:12px;color:var(--muted)}
+.scan-pre{white-space:pre-wrap;font-size:11.5px;background:#03070d;border:1px solid var(--border);border-radius:6px;padding:10px;max-height:260px;overflow:auto;color:var(--text)}
+details summary{cursor:pointer;font-size:11px;color:var(--muted);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em;margin-top:6px}
+details summary:hover{color:var(--accent)}
+@media (max-width: 920px){
+  .g2{grid-template-columns:1fr}
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .app{grid-template-columns:1fr}
+  .side{position:relative;height:auto}
+}
+</style>
 </head>
 <body>
 <div class="app">
@@ -200,12 +311,12 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); font
     <div class="logo-mark">PS</div>
     <div>
       <div class="logo-text">PromptShield</div>
-      <div class="logo-sub">LLM Red-Teaming Suite</div>
+      <div class="logo-sub">LLM Security Operations</div>
     </div>
   </div>
 
   <nav class="nav">
-    <div class="nav-section">Attack</div>
+    <div class="nav-section">Red Team</div>
     <button class="nav-item active" onclick="nav('models',this)">
       Models
       <span class="badge" id="nav-available">—</span>
@@ -214,7 +325,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); font
       Run Attack
     </button>
 
-    <div class="nav-section">Results</div>
+    <div class="nav-section">Intel</div>
     <button class="nav-item" onclick="nav('overview',this)">
       Overview
     </button>
@@ -228,12 +339,17 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); font
       Payload Log
     </button>
 
-    <div class="nav-section">Defense</div>
+    <div class="nav-section">Blue Team</div>
     <button class="nav-item" onclick="nav('defense',this)">
       Defense Engine
     </button>
 
-    <div class="nav-section">Config</div>
+    <div class="nav-section">Automation</div>
+    <button class="nav-item" onclick="nav('autort',this)">
+      AutoRT Campaigns
+    </button>
+
+    <div class="nav-section">System</div>
     <button class="nav-item" onclick="nav('keys',this)">
       API Keys
     </button>
@@ -269,6 +385,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); font
       <span class="srv-dot srv-spin" id="srv-dot"></span>
       <span id="srv-status">Connecting…</span>
     </span>
+    <span class="clock" id="topbar-clock">--:--:--</span>
     <button class="btn btn-ghost btn-sm" onclick="refreshAll()">Refresh</button>
   </div>
 </div>
@@ -378,23 +495,78 @@ body { background: var(--bg); color: var(--text); font-family: var(--font); font
     <div class="empty"><h3>Defense data unavailable</h3><p>Start the server and click Refresh — or click "Run Defense Evaluation" above.</p></div>
   </div>
   <div class="card" style="margin-top:1rem">
-    <div class="card-title">Test any input — run the defense engine on it</div>
-    <div style="display:flex;gap:8px;margin-bottom:.5rem;flex-wrap:wrap;align-items:center">
+    <div class="card-title">Guard test bench — full pipeline, input or output</div>
+    <div class="filter-bar">
+      <select class="filter-sel" id="scan-direction">
+        <option value="input">input — screen a client prompt</option>
+        <option value="output">output — screen a model reply</option>
+      </select>
       <select class="filter-sel" id="scan-mode">
-        <option value="block">block mode</option>
-        <option value="sanitize">sanitize mode</option>
-        <option value="alert">alert mode</option>
+        <option value="block">block</option>
+        <option value="sanitize">sanitize</option>
+        <option value="alert">alert</option>
       </select>
       <select class="filter-sel" id="scan-tier">
         <option value="">no tier</option>
         <option value="1">tier 1</option><option value="2">tier 2</option>
         <option value="3">tier 3</option><option value="4">tier 4</option>
       </select>
-      <button class="btn btn-primary btn-sm" onclick="defScan()">Scan input</button>
-      <span style="font-size:11px;color:var(--dim)">Try a payload with an [INST: ...] block, or any text you want checked.</span>
+      <button class="btn btn-primary btn-sm" onclick="defScan()">Screen</button>
     </div>
-    <textarea id="scan-text" placeholder="Paste a payload or any text here..." style="width:100%;min-height:72px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-family:var(--mono);font-size:12px;padding:8px;box-sizing:border-box"></textarea>
-    <div id="scan-result" style="margin-top:.6rem;font-size:13px"></div>
+    <textarea id="scan-text" class="scan-input" placeholder="Paste a payload, a document, or a model reply..."></textarea>
+    <div id="scan-result" style="margin-top:.7rem;font-size:13px"></div>
+  </div>
+</div>
+
+<!-- ═══ AUTORT PAGE ═══ -->
+<div id="page-autort" class="page">
+  <div class="g2">
+    <div class="card">
+      <div class="card-title">Launch campaign</div>
+      <div class="form-row"><label>Program</label><select class="filter-sel" id="at-program"></select></div>
+      <div class="form-row"><label>Payloads</label><select class="filter-sel" id="at-payloads"></select></div>
+      <div class="form-row"><label>Lane</label><input class="key-input" id="at-lane" value="model_guardrail"></div>
+      <div class="form-row"><label>Backend</label>
+        <select class="filter-sel" id="at-backend" onchange="atBackendChange()">
+          <option value="mock">mock — offline demo</option>
+          <option value="api">api — OpenAI-compatible endpoint</option>
+          <option value="cli">cli — local agent command</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Strategy</label>
+        <select class="filter-sel" id="at-strategy">
+          <option value="staged">staged</option>
+          <option value="sweep">sweep</option>
+          <option value="adaptive">adaptive</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Budget</label><input class="key-input" id="at-budget" value="30"></div>
+      <div class="form-row"><label>Variants</label><input class="key-input" id="at-variants" value="3"></div>
+      <div id="at-api-fields" style="display:none">
+        <div class="form-row"><label>Base URL</label><input class="key-input" id="at-base-url" placeholder="https://api.openai.com/v1"></div>
+        <div class="form-row"><label>Model</label><input class="key-input" id="at-model" placeholder="gpt-4o-mini"></div>
+        <div class="form-row"><label>Key env var</label><input class="key-input" id="at-key-env" value="OPENAI_API_KEY"></div>
+        <label style="display:flex;gap:8px;align-items:center;font-size:12px;color:var(--muted);margin-top:6px">
+          <input type="checkbox" id="at-confirm"> Confirm live execution (traffic leaves this machine)
+        </label>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:.9rem;flex-wrap:wrap">
+        <button class="btn btn-primary" id="at-run-btn" onclick="startAutortRun()">Run campaign</button>
+        <span id="at-run-label" style="font-size:12px;color:var(--muted)">Mock backend runs fully offline — perfect for a first demo.</span>
+      </div>
+    </div>
+    <div class="card" style="display:flex;flex-direction:column">
+      <div class="card-title">Campaign log</div>
+      <div id="at-terminal" class="terminal" style="flex:1;min-height:320px;max-height:440px"></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:1rem">
+    <div class="card-title">Campaign archive — results/autort</div>
+    <div id="at-results"><div class="empty"><h3>No campaigns yet</h3><p>Run one above — the mock backend works offline.</p></div></div>
+  </div>
+  <div class="card" id="at-report-card" style="display:none;margin-top:1rem">
+    <div class="card-title" id="at-report-title">Campaign report</div>
+    <pre id="at-report-body" class="mono scan-pre" style="max-height:440px"></pre>
   </div>
 </div>
 
@@ -489,7 +661,8 @@ const PAGE_META = {
   tiers:    ['Tier Analysis', 'Breakdown by attack technique'],
   compare:  ['Model Comparison', 'Side-by-side model results'],
   payloads: ['Payload Log', 'All attack results'],
-  defense:  ['Defense Engine', 'Layered defense evaluated on the same corpus'],
+  defense:  ['Defense Engine', 'Layered defense in front of the corpus and the chat path'],
+  autort:   ['AutoRT', 'Automated multi-turn red-teaming campaigns'],
   keys:     ['API Keys', 'Manage provider credentials'],
 };
 
@@ -507,6 +680,7 @@ function nav(page, btn) {
   if (page === 'compare')  renderCompare();
   if (page === 'payloads') renderPayloads();
   if (page === 'defense')  renderDefense();
+  if (page === 'autort')   loadAutortResults();
 }
 
 // ── models page ───────────────────────────────────────────────
@@ -1200,32 +1374,178 @@ function escHtml(s) {
 
 async function defScan() {
   const text = document.getElementById('scan-text').value;
+  const direction = document.getElementById('scan-direction').value;
   const mode = document.getElementById('scan-mode').value;
   const tier = document.getElementById('scan-tier').value;
-  const out  = document.getElementById('scan-result');
+  const out = document.getElementById('scan-result');
   if (!text.trim()) { out.innerHTML = '<span style="color:var(--yellow)">Paste some text first.</span>'; return; }
-  out.textContent = 'Scanning\u2026';
+  out.textContent = 'Screening\u2026';
   try {
-    const r = await fetch(`${API}/defense/scan`, {
+    const modeMap = direction === 'output'
+      ? { block: 'block', sanitize: 'redact', alert: 'flag' }
+      : { block: 'block', sanitize: 'sanitize', alert: 'alert' };
+    const r = await fetch(`${API}/defense/check`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({text, mode, tier})
+      body: JSON.stringify({ text, direction, mode: modeMap[mode], tier, session_id: 'bench' })
     });
     const d = await r.json();
     if (d.error) { out.innerHTML = '<span style="color:var(--red)">Error: ' + escHtml(d.error) + '</span>'; return; }
-    const col = { block:'var(--red)', sanitize:'var(--yellow)', alert:'#8b5cf6', allow:'var(--green)' }[d.action] || 'var(--muted)';
-    const layers = (d.layers || []).map(l => l.layer + ' (' + escHtml(String(l.marker)).slice(0, 40) + ')').join(', ');
+    const col = { block:'var(--red)', sanitize:'var(--yellow)', alert:'#8b5cf6', allow:'var(--green)', redact:'var(--yellow)', flag:'#8b5cf6' }[d.action] || 'var(--muted)';
+    if (direction === 'output') {
+      const rows = (d.findings || []).map(f =>
+        `<tr><td class="mono">${escHtml(f.kind)}</td><td>${escHtml(f.reason)}</td>
+         <td class="mono">${escHtml(f.sample)}</td><td class="mono">${(+f.severity).toFixed(2)}</td></tr>`).join('');
+      out.innerHTML = `
+        <div class="scan-head"><span class="scan-act" style="color:${col}">${d.action.toUpperCase()}</span>
+          <span style="color:var(--muted)">score ${(+d.score).toFixed(2)}</span></div>
+        <div style="color:var(--muted);font-size:12px;margin:4px 0 8px">${escHtml(d.explanation || '')}</div>
+        ${rows ? `<table class="tbl"><thead><tr><th>Kind</th><th>Reason</th><th>Sample (masked)</th><th>Severity</th></tr></thead><tbody>${rows}</tbody></table>` : ''}
+        <details><summary>Screened output</summary><pre class="mono scan-pre">${escHtml(d.cleaned || '')}</pre></details>`;
+      return;
+    }
+    const chips = [];
+    if (d.sanitization && d.sanitization.actions) chips.push(...d.sanitization.actions.map(a => a.detail));
+    if (d.hierarchy && d.hierarchy.conflicts) chips.push(d.hierarchy.conflicts + ' instruction span(s) quarantined from data');
+    if (d.anomaly && d.anomaly.flags) chips.push(...d.anomaly.flags);
+    if (d.limits && !d.limits.allowed) chips.push('limits: ' + d.limits.reason);
+    const reasons = (d.reasons || []).map(x => `<li>${escHtml(x)}</li>`).join('');
     out.innerHTML = `
-      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-        <span style="font-weight:700;color:${col}">${d.action.toUpperCase()}</span>
-        <span style="color:var(--muted)">score ${(+d.score).toFixed(2)}</span>
-        <span style="color:var(--muted)">${layers || 'no layers fired'}</span>
-      </div>
-      <div style="color:var(--muted);font-size:12px;margin-top:3px">${escHtml(d.explanation || '')}</div>
-      ${d.sanitized ? `<div style="margin-top:8px"><div style="font-size:11px;color:var(--muted);margin-bottom:3px">SANITIZED OUTPUT</div><div class="mono" style="white-space:pre-wrap;background:var(--s2);border:1px solid var(--border);border-radius:6px;padding:8px">${escHtml(d.sanitized)}</div></div>` : ''}
-    `;
+      <div class="scan-head"><span class="scan-act" style="color:${col}">${d.action.toUpperCase()}</span>
+        <span style="color:var(--muted)">risk ${(+d.score).toFixed(2)}</span></div>
+      <div style="color:var(--muted);font-size:12px;margin:4px 0 8px">${escHtml(d.explanation || '')}</div>
+      ${chips.length ? '<div>' + chips.map(c => `<span class="chip">${escHtml(c)}</span>`).join('') + '</div>' : ''}
+      ${reasons ? `<details><summary>Reasons (${d.reasons.length})</summary><ul class="scan-list">${reasons}</ul></details>` : ''}
+      <details><summary>Cleaned text (neutralized)</summary><pre class="mono scan-pre">${escHtml(d.cleaned_text || '')}</pre></details>
+      <details><summary>Guarded text (fenced for the model)</summary><pre class="mono scan-pre">${escHtml(d.guarded_text || '')}</pre></details>`;
   } catch (e) {
     out.innerHTML = '<span style="color:var(--red)">Failed: ' + escHtml(e.message) + '</span>';
+  }
+}
+
+// ═══ autort page ══════════════════════════════════════════════════
+let atRunEs = null;
+
+function atTermLine(text) {
+  const term = document.getElementById('at-terminal');
+  if (!term) return;
+  let cls = 't-line';
+  if (text.includes('ERROR') || text.includes('REFUSING')) cls = 't-warn';
+  else if (text.startsWith('$')) cls = 't-header';
+  else if (text.startsWith('report:') || text.startsWith('results:')) cls = 't-done';
+  else if (text.includes('bypass') || text.includes('BYPASS')) cls = 't-bypass';
+  const div = document.createElement('div');
+  div.className = cls;
+  div.textContent = text;
+  term.appendChild(div);
+  term.scrollTop = term.scrollHeight;
+}
+
+function atBackendChange() {
+  const b = document.getElementById('at-backend').value;
+  const fields = document.getElementById('at-api-fields');
+  if (fields) fields.style.display = (b === 'api' || b === 'cli') ? 'block' : 'none';
+}
+
+async function loadAutortResults() {
+  const selP = document.getElementById('at-program');
+  const selL = document.getElementById('at-payloads');
+  try {
+    if (selP && !selP.dataset.filled) {
+      const d = await fetch(`${API}/autort/programs`).then(r => r.json());
+      selP.innerHTML = (d.programs || []).map(x => `<option value="${x.name}">${x.name}</option>`).join('')
+        || '<option value="0din">0din</option>';
+      selP.dataset.filled = '1';
+    }
+    if (selL && !selL.dataset.filled) {
+      const d = await fetch(`${API}/autort/payloads`).then(r => r.json());
+      selL.innerHTML = (d.payloads || []).map(x => `<option value="${x}">${x}</option>`).join('');
+      selL.dataset.filled = '1';
+    }
+  } catch (e) { /* server offline */ }
+  try {
+    const d = await fetch(`${API}/autort/results`).then(r => r.json());
+    renderAutortResults(d.campaigns || []);
+  } catch (e) { /* ignore */ }
+}
+
+function renderAutortResults(camps) {
+  const el = document.getElementById('at-results');
+  if (!el) return;
+  if (!camps.length) {
+    el.innerHTML = '<div class="empty"><h3>No campaigns yet</h3><p>Run one \u2014 the mock backend works offline.</p></div>';
+    return;
+  }
+  el.innerHTML = camps.map(c => `
+    <div class="at-camp">
+      <div class="at-camp-name mono">${escHtml(c.name)}</div>
+      <div class="at-camp-meta">${c.results} result rows</div>
+      <button class="btn btn-ghost btn-sm" onclick="openAutortReport('${c.path}')">View report</button>
+    </div>`).join('');
+}
+
+async function openAutortReport(rel) {
+  try {
+    const d = await fetch(`${API}/autort/report?path=${encodeURIComponent(rel)}`).then(r => r.json());
+    const card = document.getElementById('at-report-card');
+    document.getElementById('at-report-title').textContent = 'Report \u2014 ' + (d.path || rel);
+    document.getElementById('at-report-body').textContent = d.error || d.text || '(empty)';
+    card.style.display = 'block';
+    card.scrollIntoView({behavior:'smooth', block:'nearest'});
+  } catch (e) {
+    console.warn('report fetch failed', e);
+  }
+}
+
+async function startAutortRun() {
+  const term = document.getElementById('at-terminal');
+  const btn = document.getElementById('at-run-btn');
+  const lbl = document.getElementById('at-run-label');
+  if (!term || !btn) return;
+  const backend = document.getElementById('at-backend').value;
+  const gv = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+  if ((backend === 'api' || backend === 'cli') && !document.getElementById('at-confirm').checked) {
+    lbl.textContent = 'Tick "Confirm live execution" first for api/cli backends.';
+    return;
+  }
+  const body = {
+    program: gv('at-program'), payloads: gv('at-payloads'), lane: gv('at-lane'),
+    backend, strategy: gv('at-strategy'),
+    budget: parseInt(gv('at-budget') || '30', 10),
+    variants: parseInt(gv('at-variants') || '3', 10),
+    base_url: gv('at-base-url'), model: gv('at-model'), key_env: gv('at-key-env'),
+    confirm: document.getElementById('at-confirm').checked,
+  };
+  term.innerHTML = '';
+  btn.disabled = true;
+  lbl.textContent = 'Campaign running\u2026';
+  try {
+    const res = await fetch(`${API}/autort/run`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (!data.run_key) throw new Error(data.error || 'could not start');
+    if (atRunEs) atRunEs.close();
+    atRunEs = new EventSource(`${API}/autort/run/${data.run_key}/stream`);
+    atRunEs.onmessage = async (e) => {
+      try {
+        const d = JSON.parse(e.data);
+        if (d.line !== undefined) atTermLine(d.line);
+        if (d.done) {
+          atRunEs.close();
+          atRunEs = null;
+          btn.disabled = false;
+          lbl.textContent = d.status === 'done' ? 'Done \u2014 archive updated below.' : 'Finished with errors \u2014 see log.';
+          await loadAutortResults();
+        }
+      } catch (err) { console.warn('autort SSE parse', err); }
+    };
+    atRunEs.onerror = () => {};
+  } catch (e) {
+    btn.disabled = false;
+    lbl.textContent = 'Failed to start: ' + e.message;
   }
 }
 
@@ -1264,7 +1584,7 @@ function destroyChart(id) {
 
 // ── refresh all ───────────────────────────────────────────────
 async function refreshAll() {
-  await Promise.all([loadModels(), loadResults(), loadDefense()]);
+  await Promise.all([loadModels(), loadResults(), loadDefense(), loadAutortResults()]);
   if (document.getElementById('page-defense') && document.getElementById('page-defense').classList.contains('active')) renderDefense();
   const active = document.querySelector('.page.active');
   if (active) {
@@ -1279,7 +1599,7 @@ async function refreshAll() {
 // ── init ──────────────────────────────────────────────────────
 async function init() {
   setServerStatus('spin');
-  await Promise.all([loadModels(), loadResults(), loadKeys(), loadDefense()]);
+  await Promise.all([loadModels(), loadResults(), loadKeys(), loadDefense(), loadAutortResults()]);
   // auto-refresh every 20 seconds
   clearInterval(refreshTimer);
   refreshTimer = setInterval(async () => {
@@ -1295,6 +1615,13 @@ async function init() {
 }
 
 init();
+
+// live ops clock
+(function clock() {
+  const el = document.getElementById('topbar-clock');
+  if (el) el.textContent = new Date().toLocaleTimeString('en-GB', {hour12: false});
+  setTimeout(clock, 1000);
+})();
 </script>
 </body>
 </html>

@@ -103,9 +103,10 @@ Results below are computed from [`results/promptshield.db`](results/) with the c
 - **Attack runner** (`runner.py`) — 55 structured payloads across 4 tiers against any of 67 model aliases on 11 providers; rate-limit handling with exponential backoff; comparison mode; dry-run preview.
 - **Versioned payload corpus** (`payloads/`) — YAML records with category, goal, pre-declared success signals, severity, and provenance.
 - **Deterministic classifier** (`classifier.py`) — four strategies (signal match, refusal detection, short-anomaly, heuristic patterns) with confidence scoring and a conservative default; no LLM-as-judge.
-- **Layered defense engine** (`defenses/`) — syntax, semantic, and encoding layers feeding one decision, with three operating modes (block / sanitize / alert).
+- **Layered defense engine** (`defenses/`) — a five-stage deterministic stack: input sanitization & screening, prompt hierarchy & policy enforcement, output guarding, anomaly detection, and rate/usage controls; three operating modes (block / sanitize / alert).
+- **Guard server — defense as a service** (`guard_server.py`) — puts the full stack in front of any OpenAI-compatible chat model: screen the input, call the model, screen the reply. Ships with a Dockerfile and [HOSTING.md](HOSTING.md).
 - **Local dashboard + server** (`dashboard.html`, `server.py`) — live run control, result views, and a Defense Engine page; single-file front end, no build step.
-- **Automation tooling** — `autort/` (automated multi-turn red-teaming engine with sweep/adaptive strategies) and `webrunner/` (browser-driven testing for chat UIs without APIs).
+- **Automation tooling** — `autort/` (automated multi-turn red-teaming engine with sweep/adaptive strategies, runnable from the dashboard's **AutoRT** page) and `webrunner/` (browser-driven testing for chat UIs without APIs).
 - **Integrations** — adapters for [garak](https://github.com/NVIDIA/garak) and [PyRIT](https://github.com/Azure/PyRIT) (`integrations/`).
 - **Tests** (`tests/`) — suites for the defense engine, classifier strategies, and tooling.
 
@@ -160,7 +161,15 @@ Every payload declares its **success signals before execution**, carries severit
 
 ## Defense Engine
 
-`defenses/` implements the recommended architecture from the dissertation's mitigation study: a deterministic **layered heuristic engine** (chosen over regex-only filters, which are brittle, and over ML classifiers, which are heavy and non-auditable).
+`defenses/` implements the recommended architecture from the dissertation's mitigation study — a deterministic **layered heuristic engine** (chosen over regex-only filters, which are brittle, and over ML classifiers, which are heavy and non-auditable) — and extends it into a **five-stage guard stack**:
+
+| Stage | What it neutralizes |
+|---|---|
+| **Input sanitizer** | zero-width / bidi smuggling, look-alike Unicode, CSS-hidden HTML, `[INST]`-style blocks, directive keys injected into structured data |
+| **Prompt hierarchy** | instruction-like spans hidden inside documents and data; wraps untrusted content in explicit `<untrusted_data>` fences with a "treat as data only" policy note |
+| **Output guard** | credential-shaped tokens, emails (PII), canary tokens, and instruction-disclosure phrasing in model replies (redact / flag / block) |
+| **Anomaly detection** | extraction probing, long-context floods, repeated-block padding, instruction barrages |
+| **Rate & usage controls** | sliding-window limits, input-size caps, session volume budgets, violation cooldowns |
 
 **Layers:**
 
@@ -201,7 +210,27 @@ python evaluate_defenses.py     # writes results/defense_eval.json
 python -c "from defenses import analyze; r = analyze('ignore all previous instructions', tier=1, mode='block'); print(r.action, round(r.score,2), r.explanation)"
 ```
 
-The dashboard's **Defense Engine** page runs the same evaluation with a live log, and lets you scan any input interactively.
+The dashboard's **Defense Engine** page runs the same evaluation with a live log, and its **Guard test bench** screens any input or output through the full pipeline (with the neutralized and fenced versions shown).
+
+**Guard server — defense as a service:**
+
+```bash
+set GUARD_TOKEN=secret123
+set UPSTREAM_URL=https://api.groq.com/openai/v1
+set UPSTREAM_KEY=<your key>
+set UPSTREAM_MODEL=llama-3.3-70b-versatile
+python guard_server.py
+# POST /v1/guard/chat  — blocked inputs never reach the model; losing outputs never reach the client
+```
+
+See [HOSTING.md](HOSTING.md) for Docker, VPS (systemd + nginx) and managed-platform deployment.
+
+**Attack a local model through the guard:** host Ollama + the guard, then run
+`python runner.py --model guard-llama3 --tier 1` — blocked payloads are recorded as
+`GUARD_BLOCK` and never reach the model. Full walkthrough: [LOCAL_LLM_SETUP.md](LOCAL_LLM_SETUP.md).
+
+**Run it online:** `docker compose up -d` on a cloud server starts Ollama + the guard
+together — see [LOCAL_LLM_SETUP.md](LOCAL_LLM_SETUP.md), section "Host the whole loop online".
 
 ---
 
@@ -239,6 +268,8 @@ promptshield/
 ├── classifier.py            # Deterministic response classification pipeline
 ├── evaluate_defenses.py     # Defense engine evaluation (corpus + benign controls)
 ├── server.py                # Local web server (dashboard + REST API)
+├── guard_server.py          # Hosted guard service (screens inputs/outputs around any chat model)
+├── docker-compose.yml       # Ollama + guard in one command (cloud hosting)
 ├── dashboard.html           # Single-file live dashboard
 ├── autort_cli.py            # Automated multi-turn red-teaming CLI
 ├── webrunner_cli.py         # Browser-driven target runner CLI
@@ -260,6 +291,8 @@ promptshield/
 ├── AUTORT.md                # AutoRT documentation
 ├── WEBRUNNER.md             # WebRunner documentation
 ├── DEFENSE_MITIGATION.md    # Defense design study (three architectures compared)
+├── HOSTING.md               # Guard server hosting guide (local / Docker / VPS / managed)
+├── LOCAL_LLM_SETUP.md       # Local LLM + guard + attack-loop walkthrough
 ├── CONTRIBUTING.md • SECURITY.md • LICENSE • README.md
 └── requirements.txt
 ```
@@ -588,6 +621,8 @@ The study followed responsible-disclosure practice: model-specific weaknesses ar
 |---|---|
 | [`schema.md`](schema.md) | Payload YAML field documentation |
 | [`DEFENSE_MITIGATION.md`](DEFENSE_MITIGATION.md) | Defense design study — three architectures compared, layer specification, success criteria |
+| [`HOSTING.md`](HOSTING.md) | Running & hosting the guard server — configuration, Docker, VPS, client examples |
+| [`LOCAL_LLM_SETUP.md`](LOCAL_LLM_SETUP.md) | Local LLM (Ollama) behind the guard — install, defense on, attack with the API key |
 | [`AUTORT.md`](AUTORT.md) | Automated multi-turn red-teaming engine — strategies, backends, usage |
 | [`WEBRUNNER.md`](WEBRUNNER.md) | Browser-driven testing for chat UIs — sites, calibration, usage |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Adding payloads, providers, or classifier strategies |
