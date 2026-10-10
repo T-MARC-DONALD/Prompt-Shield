@@ -4,8 +4,9 @@
 *.key
 secrets.yaml
 
-# ── Results (generated data — do not commit) ──────────────────
-results/
+# Results: published research data (database + per-run reports are tracked)
+results/autort/
+results/bounty/
 *.db
 *.sqlite
 *.sqlite3

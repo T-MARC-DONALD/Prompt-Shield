@@ -286,6 +286,7 @@ promptshield/
 ├── integrations/            # garak and PyRIT adapters
 ├── tests/                   # Defense, classifier, and tooling test suites
 ├── images/                  # Dashboard screenshots
+├── figures/                 # Result charts and design diagrams
 ├── results/                 # SQLite database + per-run CSV reports
 │
 ├── AUTORT.md                # AutoRT documentation
