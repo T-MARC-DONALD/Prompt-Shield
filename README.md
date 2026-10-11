@@ -294,6 +294,7 @@ promptshield/
 ├── DEFENSE_MITIGATION.md    # Defense design study (three architectures compared)
 ├── HOSTING.md               # Guard server hosting guide (local / Docker / VPS / managed)
 ├── LOCAL_LLM_SETUP.md       # Local LLM + guard + attack-loop walkthrough
+├── PAYLOAD_SOURCES.md       # Attack provenance and sources for the 55-payload corpus
 ├── CONTRIBUTING.md, SECURITY.md, LICENSE, README.md
 └── requirements.txt
 ```
@@ -624,6 +625,7 @@ The study followed responsible-disclosure practice: model-specific weaknesses ar
 | [`DEFENSE_MITIGATION.md`](DEFENSE_MITIGATION.md) | Defense design study: three architectures compared, layer specification, success criteria |
 | [`HOSTING.md`](HOSTING.md) | Running and hosting the guard server: configuration, Docker, VPS, client examples |
 | [`LOCAL_LLM_SETUP.md`](LOCAL_LLM_SETUP.md) | Local LLM (Ollama) behind the guard: install, defense on, attack with the API key |
+| [`PAYLOAD_SOURCES.md`](PAYLOAD_SOURCES.md) | Attack provenance: the documented source of every payload technique in the corpus |
 | [`AUTORT.md`](AUTORT.md) | Automated multi-turn red-teaming engine: strategies, backends, usage |
 | [`WEBRUNNER.md`](WEBRUNNER.md) | Browser-driven testing for chat UIs: sites, calibration, usage |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Adding payloads, providers, or classifier strategies |
